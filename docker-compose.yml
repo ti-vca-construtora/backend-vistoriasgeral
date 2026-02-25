@@ -1,0 +1,23 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vistorias-api
+    command: npm run start:dev
+    ports:
+      - "3001:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+    restart: unless-stopped
+    networks:
+      - app-network
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+networks:
+  app-network:
+    driver: bridge
