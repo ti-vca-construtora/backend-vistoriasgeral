@@ -1,0 +1,1900 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login realizado com sucesso"
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/users": {
+      "get": {
+        "operationId": "UsersController_find",
+        "parameters": [
+          {
+            "name": "id",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "uuid-do-usuario",
+              "type": "string"
+            }
+          },
+          {
+            "name": "email",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "user@email.com",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Users"
+        ]
+      },
+      "post": {
+        "operationId": "UsersController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/users/{id}": {
+      "put": {
+        "operationId": "UsersController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "uuid-do-usuario",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Users"
+        ]
+      },
+      "delete": {
+        "operationId": "UsersController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "uuid-do-usuario",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/enterprises": {
+      "get": {
+        "operationId": "EnterprisesController_find",
+        "parameters": [
+          {
+            "name": "id",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EnterpriseResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Enterprises"
+        ]
+      },
+      "post": {
+        "operationId": "EnterprisesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEnterpriseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnterpriseResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Enterprises"
+        ]
+      }
+    },
+    "/enterprises/{id}": {
+      "put": {
+        "operationId": "EnterprisesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEnterpriseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Enterprises"
+        ]
+      },
+      "delete": {
+        "operationId": "EnterprisesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Enterprises"
+        ]
+      }
+    },
+    "/clients": {
+      "get": {
+        "operationId": "ClientsController_findAll",
+        "parameters": [
+          {
+            "name": "id",
+            "required": false,
+            "in": "query",
+            "description": "Filtrar por ID do cliente",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "identerprise",
+            "required": false,
+            "in": "query",
+            "description": "Filtrar por ID da empresa",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de clientes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ClientResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Clients"
+        ]
+      },
+      "post": {
+        "operationId": "ClientsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateClientDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Cliente criado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Clients"
+        ]
+      }
+    },
+    "/clients/import": {
+      "post": {
+        "operationId": "ClientsController_bulkCreate",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkCreateClientDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Resultado da importação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkCreateResultDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Importação em lote de clientes",
+        "tags": [
+          "Clients"
+        ]
+      }
+    },
+    "/clients/{id}": {
+      "put": {
+        "operationId": "ClientsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateClientDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cliente atualizado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Clients"
+        ]
+      },
+      "delete": {
+        "operationId": "ClientsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cliente deletado com sucesso"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Clients"
+        ]
+      }
+    },
+    "/overview": {
+      "get": {
+        "operationId": "OverviewController_findAll",
+        "parameters": [
+          {
+            "name": "id",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "idclient",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "situation",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "remanescente",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OverviewResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Listar overview (acompanhamento geral)",
+        "tags": [
+          "Overview"
+        ]
+      }
+    },
+    "/overview/{id}": {
+      "put": {
+        "operationId": "OverviewController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOverviewDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Overview atualizado com sucesso"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Atualizar overview do cliente",
+        "tags": [
+          "Overview"
+        ]
+      }
+    },
+    "/inspections": {
+      "get": {
+        "operationId": "InspectionsController_findAll",
+        "parameters": [
+          {
+            "name": "id",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "idclient",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "inspector",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "João Vistoriador",
+              "type": "string"
+            }
+          },
+          {
+            "name": "mobuss",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": false,
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "AGUARDANDO",
+              "type": "string"
+            }
+          },
+          {
+            "name": "idprerejection",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Data inicial (yyyy-mm-dd)",
+            "schema": {
+              "example": "2026-02-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Data final (yyyy-mm-dd)",
+            "schema": {
+              "example": "2026-02-05",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InspectionResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Listar vistorias",
+        "tags": [
+          "Inspections"
+        ]
+      },
+      "post": {
+        "operationId": "InspectionsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInspectionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Criar vistoria",
+        "tags": [
+          "Inspections"
+        ]
+      }
+    },
+    "/inspections/{id}": {
+      "put": {
+        "operationId": "InspectionsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateInspectionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Atualizar vistoria",
+        "tags": [
+          "Inspections"
+        ]
+      },
+      "delete": {
+        "operationId": "InspectionsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Deletar vistoria",
+        "tags": [
+          "Inspections"
+        ]
+      }
+    },
+    "/rejections": {
+      "get": {
+        "operationId": "RejectionsController_findAll",
+        "parameters": [
+          {
+            "name": "id",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "idinspection",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "idclient",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "AGUARDANDO",
+              "type": "string"
+            }
+          },
+          {
+            "name": "construction_status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "PENDENTE",
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Data inicial (yyyy-mm-dd)",
+            "schema": {
+              "example": "2026-02-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Data final (yyyy-mm-dd)",
+            "schema": {
+              "example": "2026-02-05",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RejectionResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Listar recusas",
+        "tags": [
+          "Rejections"
+        ]
+      }
+    },
+    "/rejections/{id}": {
+      "put": {
+        "operationId": "RejectionsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRejectionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RejectionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Atualizar recusa",
+        "tags": [
+          "Rejections"
+        ]
+      },
+      "delete": {
+        "operationId": "RejectionsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Deletar recusa",
+        "tags": [
+          "Rejections"
+        ]
+      }
+    },
+    "/eligible": {
+      "get": {
+        "description": "\n      Retorna clientes elegíveis para agendamento de vistoria:\n      - Sem type: Retorna TODOS (new + again)\n      - type=new: Clientes com status LIBERADA que nunca tiveram vistoria\n      - type=again: Clientes com recusa CONCLUÍDA que não reagendaram\n    ",
+        "operationId": "EligibleController_findAll",
+        "parameters": [
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "description": "Tipo de elegibilidade: \"new\" (primeira vistoria), \"again\" (reagendamento) ou omitir para ambos",
+            "schema": {
+              "enum": [
+                "new",
+                "again"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EligibleResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Listar clientes aptos para vistoria",
+        "tags": [
+          "Eligible"
+        ]
+      }
+    },
+    "/timeline/{idclient}": {
+      "get": {
+        "operationId": "TimelineController_getTimeline",
+        "parameters": [
+          {
+            "name": "idclient",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Timeline do cliente retornada com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimelineResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Cliente não encontrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Obter timeline completa de um cliente",
+        "tags": [
+          "Timeline"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "API - Controle de Vistorias e Entregas",
+    "description": "Documentação da API",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "usuario@example.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "senha123"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "UserResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "name",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "CreateUserDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "user@email.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "123456"
+          },
+          "name": {
+            "type": "string",
+            "example": "João da Silva"
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "name"
+        ]
+      },
+      "UpdateUserDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "novo@email.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "Nova senha"
+          },
+          "name": {
+            "type": "string",
+            "example": "Novo nome"
+          }
+        }
+      },
+      "EnterpriseResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "CreateEnterpriseDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateEnterpriseDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "ClientResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "ID único do cliente",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "description": "Nome do cliente",
+            "example": "João Silva"
+          },
+          "unit": {
+            "type": "string",
+            "description": "Unidade do cliente",
+            "example": "Apto 101"
+          },
+          "seller": {
+            "type": "string",
+            "description": "Vendedor responsável",
+            "example": "Maria Santos"
+          },
+          "identerprise": {
+            "type": "number",
+            "description": "ID da empresa",
+            "example": 1
+          },
+          "created_at": {
+            "type": "string",
+            "description": "Data de criação",
+            "example": "2026-01-16T15:00:00Z"
+          },
+          "updated_at": {
+            "type": "object",
+            "description": "Data de atualização",
+            "example": "2026-01-16T15:30:00Z",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "unit",
+          "seller",
+          "identerprise",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "CreateClientDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Nome do cliente",
+            "example": "João Silva"
+          },
+          "unit": {
+            "type": "string",
+            "description": "Unidade do cliente",
+            "example": "Apto 101"
+          },
+          "seller": {
+            "type": "string",
+            "description": "Vendedor responsável",
+            "example": "Maria Santos"
+          },
+          "identerprise": {
+            "type": "number",
+            "description": "ID da empresa",
+            "example": 1
+          }
+        },
+        "required": [
+          "name",
+          "unit",
+          "seller",
+          "identerprise"
+        ]
+      },
+      "BulkCreateClientDto": {
+        "type": "object",
+        "properties": {
+          "clients": {
+            "description": "Lista de clientes para importação em lote",
+            "example": [
+              {
+                "name": "João Silva",
+                "unit": "Apto 101",
+                "seller": "Maria Santos",
+                "identerprise": 1
+              },
+              {
+                "name": "Ana Costa",
+                "unit": "Apto 102",
+                "seller": "Maria Santos",
+                "identerprise": 1
+              }
+            ],
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateClientDto"
+            }
+          }
+        },
+        "required": [
+          "clients"
+        ]
+      },
+      "BulkCreateResultDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number",
+            "description": "Total de clientes enviados",
+            "example": 100
+          },
+          "inserted": {
+            "type": "number",
+            "description": "Total inseridos com sucesso",
+            "example": 95
+          },
+          "skipped": {
+            "type": "number",
+            "description": "Total ignorados (duplicados)",
+            "example": 5
+          },
+          "skippedDetails": {
+            "description": "Lista de clientes que foram ignorados e o motivo",
+            "example": [
+              {
+                "name": "João Silva",
+                "unit": "Apto 101",
+                "reason": "Cliente já existe neste empreendimento"
+              }
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "inserted",
+          "skipped",
+          "skippedDetails"
+        ]
+      },
+      "UpdateClientDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Nome do cliente",
+            "example": "João Silva"
+          },
+          "unit": {
+            "type": "string",
+            "description": "Unidade do cliente",
+            "example": "Apto 101"
+          },
+          "seller": {
+            "type": "string",
+            "description": "Vendedor responsável",
+            "example": "Maria Santos"
+          },
+          "identerprise": {
+            "type": "number",
+            "description": "ID da empresa",
+            "example": 1
+          }
+        }
+      },
+      "InspectionRejectionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          },
+          "prevision_date": {
+            "type": "object",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "prevision_date",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "InspectionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number"
+          },
+          "datetime": {
+            "type": "string"
+          },
+          "inspector": {
+            "type": "object",
+            "nullable": true
+          },
+          "mobuss": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "object",
+            "nullable": true
+          },
+          "rejections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InspectionRejectionDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "datetime",
+          "inspector",
+          "mobuss",
+          "status",
+          "created_at",
+          "updated_at",
+          "rejections"
+        ]
+      },
+      "OverviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDENTE",
+              "EM ANDAMENTO",
+              "LIBERADA"
+            ],
+            "example": "PENDENTE"
+          },
+          "situation": {
+            "type": "string",
+            "enum": [
+              "ATIVO",
+              "INATIVO"
+            ],
+            "example": "ATIVO"
+          },
+          "status_recente": {
+            "type": "string",
+            "enum": [
+              "ACEITE",
+              "AGUARDANDO",
+              "CANCELADA",
+              "RECUSA"
+            ],
+            "example": "AGUARDANDO",
+            "description": "Status recente calculado"
+          },
+          "status_quality": {
+            "type": "object",
+            "example": "PENDENTE",
+            "nullable": true
+          },
+          "status_delivery": {
+            "type": "object",
+            "example": "PENDENTE",
+            "nullable": true
+          },
+          "data_register": {
+            "type": "object",
+            "nullable": true
+          },
+          "data_contact": {
+            "type": "object",
+            "nullable": true
+          },
+          "obs": {
+            "type": "object",
+            "nullable": true
+          },
+          "remanescente": {
+            "type": "boolean",
+            "example": true
+          },
+          "inspections": {
+            "example": "AGUARDANDO",
+            "description": "Status recente calculado a partir das vistorias/recusas",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InspectionDto"
+            }
+          }
+        },
+        "required": [
+          "status",
+          "situation",
+          "status_recente",
+          "status_quality",
+          "status_delivery",
+          "data_register",
+          "data_contact",
+          "obs",
+          "remanescente",
+          "inspections"
+        ]
+      },
+      "UpdateOverviewDto": {
+        "type": "object",
+        "properties": {
+          "status_quality": {
+            "type": "string",
+            "example": "OK"
+          },
+          "status_construction": {
+            "type": "string",
+            "example": "CONCLUÍDA"
+          },
+          "status_delivery": {
+            "type": "string",
+            "example": "OK"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDENTE",
+              "EM ANDAMENTO",
+              "LIBERADA"
+            ]
+          },
+          "obs": {
+            "type": "string",
+            "example": "Observações atualizadas"
+          },
+          "situation": {
+            "type": "string",
+            "enum": [
+              "ATIVO",
+              "INATIVO"
+            ]
+          }
+        }
+      },
+      "InspectionResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number"
+          },
+          "idclient": {
+            "type": "number"
+          },
+          "datetime": {
+            "type": "string"
+          },
+          "inspector": {
+            "type": "object",
+            "nullable": true
+          },
+          "mobuss": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string"
+          },
+          "idprerejection": {
+            "type": "object",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "object",
+            "nullable": true
+          },
+          "obs": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "idclient",
+          "datetime",
+          "inspector",
+          "mobuss",
+          "status",
+          "idprerejection",
+          "created_at",
+          "updated_at",
+          "obs"
+        ]
+      },
+      "CreateInspectionDto": {
+        "type": "object",
+        "properties": {
+          "idclient": {
+            "type": "number",
+            "example": 1
+          },
+          "datetime": {
+            "type": "string",
+            "example": "2026-01-20T10:00:00Z"
+          },
+          "inspector": {
+            "type": "string",
+            "example": "João Vistoriador"
+          },
+          "mobuss": {
+            "type": "boolean",
+            "example": false
+          },
+          "idprerejection": {
+            "type": "number",
+            "description": "ID da recusa anterior (quando for nova vistoria pós-recusa)",
+            "example": 10
+          },
+          "obs": {
+            "type": "string",
+            "example": "Observações"
+          }
+        },
+        "required": [
+          "idclient",
+          "datetime"
+        ]
+      },
+      "UpdateInspectionDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "AGUARDANDO | ACEITE | RECUSA | CANCELADA",
+            "example": "ACEITE"
+          },
+          "inspector": {
+            "type": "string",
+            "example": "Maria Vistoriadora"
+          },
+          "obs": {
+            "type": "string",
+            "example": "Observações atualizadas"
+          },
+          "mobuss": {
+            "type": "boolean",
+            "example": true
+          }
+        }
+      },
+      "RejectionResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number"
+          },
+          "idinspection": {
+            "type": "number"
+          },
+          "prevision_date": {
+            "type": "object",
+            "nullable": true
+          },
+          "construction_status": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "object",
+            "nullable": true
+          },
+          "obs": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "idinspection",
+          "prevision_date",
+          "construction_status",
+          "status",
+          "created_at",
+          "updated_at",
+          "obs"
+        ]
+      },
+      "UpdateRejectionDto": {
+        "type": "object",
+        "properties": {
+          "prevision_date": {
+            "type": "string",
+            "example": "2026-02-20"
+          },
+          "construction_status": {
+            "type": "string",
+            "example": "EM ANDAMENTO"
+          },
+          "status": {
+            "type": "string",
+            "example": "CONCLUÍDO"
+          },
+          "obs": {
+            "type": "string",
+            "example": "Observações atualizadas"
+          }
+        }
+      },
+      "EligibleResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "João Silva"
+          },
+          "unit": {
+            "type": "string",
+            "example": "101"
+          },
+          "seller": {
+            "type": "string",
+            "example": "Maria Santos"
+          },
+          "identerprise": {
+            "type": "number",
+            "example": 1
+          },
+          "nameenterprise": {
+            "type": "string",
+            "example": "Residencial Alegria"
+          },
+          "status": {
+            "type": "string",
+            "example": "LIBERADA"
+          },
+          "type": {
+            "type": "string",
+            "example": "new"
+          },
+          "idrejection": {
+            "type": "object",
+            "example": 1,
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "example": "2026-01-15T10:00:00.000Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "example": "2026-01-20T14:30:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "unit",
+          "seller",
+          "identerprise",
+          "nameenterprise",
+          "status",
+          "type",
+          "idrejection",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "TimelineEventDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "CLIENT_CREATED",
+              "UNIT_RELEASED",
+              "INSPECTION_SCHEDULED",
+              "INSPECTION_APPROVED",
+              "INSPECTION_REJECTED",
+              "REJECTION_RESOLVED"
+            ],
+            "description": "Tipo do evento",
+            "example": "CLIENT_CREATED"
+          },
+          "date": {
+            "type": "string",
+            "description": "Data do evento",
+            "example": "2026-01-16T15:00:00Z"
+          },
+          "description": {
+            "type": "string",
+            "description": "Descrição do evento",
+            "example": "Cliente cadastrado no sistema"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Dados adicionais do evento",
+            "nullable": true
+          }
+        },
+        "required": [
+          "type",
+          "date",
+          "description"
+        ]
+      },
+      "TimelineResponseDto": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "number",
+            "description": "ID do cliente",
+            "example": 1
+          },
+          "clientName": {
+            "type": "string",
+            "description": "Nome do cliente",
+            "example": "João Silva"
+          },
+          "unit": {
+            "type": "string",
+            "description": "Unidade do cliente",
+            "example": "Apto 101"
+          },
+          "events": {
+            "description": "Lista de eventos ordenados cronologicamente",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TimelineEventDto"
+            }
+          }
+        },
+        "required": [
+          "clientId",
+          "clientName",
+          "unit",
+          "events"
+        ]
+      }
+    }
+  }
+}
