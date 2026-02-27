@@ -128,10 +128,26 @@ export class EligibleService {
 
   /**
    * Clientes aptos para REAGENDAR vistoria:
-   * - Recusa com status CONCLUÍDO
-   * - SEM nova vistoria agendada após a recusa
+   * - Recusa com status CONCLUÍDO e SEM nova vistoria agendada após a recusa
+   * - OU última vistoria com status CANCELADA e SEM nova vistoria posterior
    */
   private async findAgainEligible() {
+    const [rejectionEligible, cancelledEligible] = await Promise.all([
+      this.findRejectionEligible(),
+      this.findCancelledEligible(),
+    ]);
+
+    // Deduplica por idclient (prioridade para recusa)
+    const seen = new Set(rejectionEligible.map(e => e.id));
+    const uniqueCancelled = cancelledEligible.filter(e => !seen.has(e.id));
+
+    return [...rejectionEligible, ...uniqueCancelled];
+  }
+
+  /**
+   * Clientes com recusa CONCLUÍDA e sem nova vistoria posterior
+   */
+  private async findRejectionEligible() {
     // 1) Buscar recusas com status CONCLUÍDO
     const { data: rejections, error: rejectionsError } = await this.admin
       .from('tb_rejections')
@@ -232,6 +248,106 @@ export class EligibleService {
         status: 'CONCLUÍDO',
         type: 'again' as const,
         idrejection: clientMap.get(client.id) ?? null,
+        created_at: client.created_at,
+        updated_at: client.updated_at,
+      };
+    });
+  }
+
+  /**
+   * Clientes cuja última vistoria tem status CANCELADA
+   * e não possuem vistoria ativa posterior
+   */
+  private async findCancelledEligible() {
+    // 1) Buscar todas as vistorias com status CANCELADA
+    const { data: cancelledInspections, error: cancelledError } = await this.admin
+      .from('tb_inspections')
+      .select('id, idclient, created_at')
+      .eq('status', 'CANCELADA');
+
+    if (cancelledError) {
+      throw new BadRequestException(cancelledError.message);
+    }
+
+    if (!cancelledInspections || cancelledInspections.length === 0) {
+      return [];
+    }
+
+    // 2) Para cada vistoria cancelada, verificar se é a ÚLTIMA do cliente
+    //    e se não existe vistoria posterior ativa
+    const eligibleClientIds: number[] = [];
+
+    // Agrupar por idclient para pegar apenas a cancelada mais recente
+    const byClient = new Map<number, typeof cancelledInspections>();
+    for (const insp of cancelledInspections) {
+      const list = byClient.get(insp.idclient) ?? [];
+      list.push(insp);
+      byClient.set(insp.idclient, list);
+    }
+
+    for (const [idclient, inspections] of byClient) {
+      // Pegar a data da vistoria cancelada mais recente
+      const latestCancelled = inspections.sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )[0];
+
+      // Buscar se existe vistoria POSTERIOR (não cancelada)
+      const { data: laterInspections, error: laterError } = await this.admin
+        .from('tb_inspections')
+        .select('id')
+        .eq('idclient', idclient)
+        .gt('created_at', latestCancelled.created_at)
+        .limit(1);
+
+      if (laterError) {
+        throw new BadRequestException(laterError.message);
+      }
+
+      // Se NÃO tem vistoria posterior, é elegível
+      if (!laterInspections || laterInspections.length === 0) {
+        eligibleClientIds.push(idclient);
+      }
+    }
+
+    if (eligibleClientIds.length === 0) {
+      return [];
+    }
+
+    // 3) Buscar dados completos dos clientes
+    const { data: clients, error: clientsError } = await this.admin
+      .from('tb_clients')
+      .select(`
+        id,
+        name,
+        unit,
+        seller,
+        identerprise,
+        created_at,
+        updated_at,
+        nameenterprise:tb_enterprises!inner(name)
+      `)
+      .in('id', eligibleClientIds);
+
+    if (clientsError) {
+      throw new BadRequestException(clientsError.message);
+    }
+
+    // 4) Formatar resposta
+    return (clients || []).map(client => {
+      const enterpriseName = Array.isArray(client.nameenterprise)
+        ? client.nameenterprise[0]?.name ?? null
+        : (client.nameenterprise as any)?.name ?? null;
+
+      return {
+        id: client.id,
+        name: client.name,
+        unit: client.unit,
+        seller: client.seller,
+        identerprise: client.identerprise,
+        nameenterprise: enterpriseName,
+        status: 'CANCELADA',
+        type: 'again' as const,
+        idrejection: null,
         created_at: client.created_at,
         updated_at: client.updated_at,
       };

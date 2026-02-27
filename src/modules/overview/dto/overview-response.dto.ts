@@ -50,9 +50,6 @@ export class OverviewResponseDto {
   @ApiProperty({ nullable: true }) data_contact: string | null;
   @ApiProperty({ nullable: true }) obs: string | null;
 
-  @ApiProperty({ example: true })
-  remanescente: boolean;
-
   @ApiProperty({
     example: 'AGUARDANDO',
     description: 'Status recente calculado a partir das vistorias/recusas',

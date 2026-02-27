@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, IsDateString } from 'class-validator';
 
 export class UpdateInspectionDto {
   @ApiPropertyOptional({
@@ -9,6 +9,14 @@ export class UpdateInspectionDto {
   @IsOptional()
   @IsString()
   status?: string;
+
+  @ApiPropertyOptional({
+    description: 'Data e hora da vistoria (ISO 8601)',
+    example: '2026-03-15T14:00:00.000Z',
+  })
+  @IsOptional()
+  @IsDateString()
+  datetime?: string;
 
   @ApiPropertyOptional({ example: 'Maria Vistoriadora' })
   @IsOptional()

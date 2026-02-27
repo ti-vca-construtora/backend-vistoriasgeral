@@ -8,7 +8,6 @@ type FindOverviewQuery = {
   idclient?: number;
   status?: string;
   situation?: string;
-  remanescente?: boolean;
 };
 
 @Injectable()
@@ -94,7 +93,6 @@ export class OverviewService {
     // 4) Monta resposta (inclui fallback virtual)
     const rows = (generals ?? []).map(g => {
       const inspectionsList = inspByClient.get(g.idclient) ?? [];
-      const reman = inspectionsList.length === 0;
 
       // status_recente (prioridade)
       let status_recente = 'PENDENTE';
@@ -105,7 +103,6 @@ export class OverviewService {
       if (hasRecusa) status_recente = 'RECUSA';
       else if (hasAguard) status_recente = 'AGUARDANDO';
       else if (hasAceite) status_recente = 'ACEITE';
-      else if (reman) status_recente = 'PENDENTE';
 
       return {
         id: g.id,
@@ -118,19 +115,12 @@ export class OverviewService {
         data_contact: g.data_contact ?? null,
         obs: g.obs ?? null,
         situation: g.situation,
-        remanescente: reman,
         status_recente,
         inspections: inspectionsList,
       };
     });
 
-    // 5) Filtro por remanescente (calculado)
-    const filtered =
-      typeof query.remanescente === 'boolean'
-        ? rows.filter(r => r.remanescente === query.remanescente)
-        : rows;
-
-    return filtered;
+    return rows;
   }
 
   async create(dto: CreateOverviewDto) {

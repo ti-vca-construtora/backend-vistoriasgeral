@@ -134,8 +134,8 @@ export class InspectionsService {
 
     if (!current) throw new NotFoundException('Vistoria não encontrada');
 
-    // 1) Não permitir mudar status se estiver com RECUSA
-    if (dto.status && current.status === 'RECUSA') {
+    // 1) Não permitir mudar STATUS se estiver com RECUSA (outros campos podem ser editados)
+    if (dto.status && dto.status !== 'RECUSA' && current.status === 'RECUSA') {
       throw new BadRequestException('Não é possível mudar o status de uma vistoria marcada como RECUSA. Exclua a recusa primeiro.');
     }
 

@@ -39,7 +39,13 @@ export class RejectionsService {
         *,
         tb_inspections (
           id,
-          idclient
+          idclient,
+          tb_clients (
+            identerprise,
+            tb_enterprises (
+              name
+            )
+          )
         )
       `);
 
@@ -75,12 +81,20 @@ export class RejectionsService {
     const { data, error } = await q;
     if (error) throw new BadRequestException(error.message);
 
-    // Flatten opcional (idclient)
-    return (data ?? []).map(r => ({
-      ...r,
-      idclient: r.tb_inspections?.idclient ?? null,
-      tb_inspections: undefined,
-    }));
+    // Flatten opcional (idclient + enterprise)
+    return (data ?? []).map(r => {
+      const inspection = r.tb_inspections as any;
+      const client = inspection?.tb_clients;
+      const enterpriseName = client?.tb_enterprises?.name ?? null;
+
+      return {
+        ...r,
+        idclient: inspection?.idclient ?? null,
+        identerprise: client?.identerprise ?? null,
+        nameenterprise: enterpriseName,
+        tb_inspections: undefined,
+      };
+    });
   }
 
 

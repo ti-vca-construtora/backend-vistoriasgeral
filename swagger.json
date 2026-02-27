@@ -541,14 +541,6 @@
             "schema": {
               "type": "string"
             }
-          },
-          {
-            "name": "remanescente",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "boolean"
-            }
           }
         ],
         "responses": {
@@ -1529,10 +1521,6 @@
             "type": "object",
             "nullable": true
           },
-          "remanescente": {
-            "type": "boolean",
-            "example": true
-          },
           "inspections": {
             "example": "AGUARDANDO",
             "description": "Status recente calculado a partir das vistorias/recusas",
@@ -1551,7 +1539,6 @@
           "data_register",
           "data_contact",
           "obs",
-          "remanescente",
           "inspections"
         ]
       },
@@ -1684,6 +1671,11 @@
             "description": "AGUARDANDO | ACEITE | RECUSA | CANCELADA",
             "example": "ACEITE"
           },
+          "datetime": {
+            "type": "string",
+            "description": "Data e hora da vistoria (ISO 8601)",
+            "example": "2026-03-15T14:00:00.000Z"
+          },
           "inspector": {
             "type": "string",
             "example": "Maria Vistoriadora"
@@ -1727,6 +1719,18 @@
           "obs": {
             "type": "object",
             "nullable": true
+          },
+          "idclient": {
+            "type": "object",
+            "nullable": true
+          },
+          "identerprise": {
+            "type": "object",
+            "nullable": true
+          },
+          "nameenterprise": {
+            "type": "object",
+            "nullable": true
           }
         },
         "required": [
@@ -1737,7 +1741,10 @@
           "status",
           "created_at",
           "updated_at",
-          "obs"
+          "obs",
+          "idclient",
+          "identerprise",
+          "nameenterprise"
         ]
       },
       "UpdateRejectionDto": {

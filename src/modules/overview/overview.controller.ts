@@ -19,7 +19,6 @@ export class OverviewController {
   @ApiQuery({ name: 'idclient', required: false, type: Number })
   @ApiQuery({ name: 'status', required: false, type: String })
   @ApiQuery({ name: 'situation', required: false, type: String })
-  @ApiQuery({ name: 'remanescente', required: false, type: Boolean })
   @ApiResponse({ status: 200, type: [OverviewResponseDto] })
   @Get()
   findAll(
@@ -27,9 +26,8 @@ export class OverviewController {
     @Query('idclient') idclient?: number,
     @Query('status') status?: string,
     @Query('situation') situation?: string,
-    @Query('remanescente') remanescente?: boolean,
   ) {
-    return this.service.findAll({ id, idclient, status, situation, remanescente });
+    return this.service.findAll({ id, idclient, status, situation });
   }
 
   // PUT
