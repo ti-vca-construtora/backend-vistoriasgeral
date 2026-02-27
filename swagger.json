@@ -1548,6 +1548,18 @@
       "UpdateOverviewDto": {
         "type": "object",
         "properties": {
+          "data_register": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-02-27T10:00:00.000Z",
+            "description": "Data de registro (ISO 8601)"
+          },
+          "data_contact": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-02-27T11:00:00.000Z",
+            "description": "Data de contato (ISO 8601)"
+          },
           "status_quality": {
             "type": "string",
             "example": "OK"
