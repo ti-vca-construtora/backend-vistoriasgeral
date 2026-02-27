@@ -36,6 +36,7 @@ export class OverviewController {
   @ApiOperation({ summary: 'Atualizar overview do cliente' })
   @ApiBody({ type: UpdateOverviewDto })
   @ApiResponse({ status: 200, description: 'Overview atualizado com sucesso' })
+  @ApiResponse({ status: 400, description: 'Transição de status inválida ou dados inválidos' })
   update(
     @Param('id') id: number,
     @Body() dto: UpdateOverviewDto,

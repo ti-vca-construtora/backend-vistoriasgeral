@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { SupabaseService } from '../../infra/supabase/supabase.service';
 import { CreateOverviewDto } from './dto/create-overview.dto';
 import { UpdateOverviewDto } from './dto/update-overview.dto';
+import { StatusGeneral } from './overview.enums';
 
 type FindOverviewQuery = {
   id?: number;
@@ -170,7 +171,7 @@ export class OverviewService {
     // 1️⃣ Verifica se overview existe
     const { data: current, error: findError } = await this.admin
       .from('tb_general')
-      .select('id')
+      .select('id, idclient, status')
       .eq('id', id)
       .maybeSingle();
 
@@ -182,7 +183,40 @@ export class OverviewService {
       throw new NotFoundException('Overview não encontrado');
     }
 
-    // 2️⃣ Atualiza apenas o que veio no DTO
+    // 2️⃣ Não permitir voltar de LIBERADA para PENDENTE quando já houver vistoria/recusa
+    if (
+      dto.status === StatusGeneral.PENDENTE
+      && current.status === StatusGeneral.LIBERADA
+    ) {
+      const [{ data: inspections, error: inspectionError }, { data: rejections, error: rejectionError }] = await Promise.all([
+        this.admin
+          .from('tb_inspections')
+          .select('id')
+          .eq('idclient', current.idclient)
+          .limit(1),
+        this.admin
+          .from('tb_rejections')
+          .select('id, tb_inspections!inner(idclient)')
+          .eq('tb_inspections.idclient', current.idclient)
+          .limit(1),
+      ]);
+
+      if (inspectionError) {
+        throw new BadRequestException(inspectionError.message);
+      }
+
+      if (rejectionError) {
+        throw new BadRequestException(rejectionError.message);
+      }
+
+      if ((inspections?.length ?? 0) > 0 || (rejections?.length ?? 0) > 0) {
+        throw new BadRequestException(
+          'Não é possível alterar o status para PENDENTE após a liberação quando já existe vistoria e/ou recusa vinculada. Exclua a vistoria e/ou recusa para continuar.',
+        );
+      }
+    }
+
+    // 3️⃣ Atualiza apenas o que veio no DTO
     const { data, error } = await this.admin
       .from('tb_general')
       .update(dto)

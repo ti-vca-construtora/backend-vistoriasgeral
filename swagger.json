@@ -595,6 +595,9 @@
         "responses": {
           "200": {
             "description": "Overview atualizado com sucesso"
+          },
+          "400": {
+            "description": "Transição de status inválida ou dados inválidos"
           }
         },
         "security": [
