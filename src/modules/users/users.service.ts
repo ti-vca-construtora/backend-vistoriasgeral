@@ -35,7 +35,19 @@ export class UsersService {
       });
 
     if (insertError) {
-      throw new BadRequestException(insertError.message);
+      const { error: rollbackError } = await this.admin.auth.admin.deleteUser(
+        user.id,
+      );
+
+      if (rollbackError) {
+        throw new BadRequestException(
+          `Falha ao inserir em tb_users (${insertError.message}) e falha no rollback do auth (${rollbackError.message})`,
+        );
+      }
+
+      throw new BadRequestException(
+        `Falha ao inserir em tb_users (${insertError.message}). O usuário no auth foi revertido automaticamente.`,
+      );
     }
 
     return this.findById(user.id);
