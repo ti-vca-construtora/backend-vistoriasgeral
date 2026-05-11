@@ -1,8 +1,10 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { AuthUser, isAdmin } from '../../infra/auth/auth-user';
 import { SupabaseService } from '../../infra/supabase/supabase.service';
 import { CreateEnterpriseDto } from './dto/create-enterprise.dto';
 import { UpdateEnterpriseDto } from './dto/update-enterprise.dto';
@@ -17,11 +19,18 @@ export class EnterprisesService {
 
   private readonly table = 'tb_enterprises';
 
-  async findAll() {
-    const { data, error } = await this.admin
+  async findAll(user: AuthUser) {
+    let q = this.admin
       .from(this.table)
       .select('*')
       .order('name');
+
+    if (!isAdmin(user)) {
+      if (user.enterpriseIds.length === 0) return [];
+      q = q.in('id', user.enterpriseIds);
+    }
+
+    const { data, error } = await q;
 
     if (error) {
       throw new BadRequestException(error.message);
@@ -30,7 +39,11 @@ export class EnterprisesService {
     return data;
   }
 
-  async findById(id: number) {
+  async findById(id: number, user?: AuthUser) {
+    if (user && !isAdmin(user) && !user.enterpriseIds.includes(id)) {
+      throw new ForbiddenException('Usuario sem acesso ao empreendimento');
+    }
+
     const { data, error } = await this.admin
       .from(this.table)
       .select('*')

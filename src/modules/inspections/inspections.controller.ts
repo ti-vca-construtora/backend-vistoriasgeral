@@ -7,6 +7,11 @@ import {
   ApiResponse, ApiTags, ApiBody
 } from '@nestjs/swagger';
 import { SupabaseAuthGuard } from '../../infra/auth/supabase-auth.guard';
+import { UserRole } from '../../infra/auth/auth-user';
+import type { AuthUser } from '../../infra/auth/auth-user';
+import { CurrentUser } from '../../infra/auth/current-user.decorator';
+import { Roles } from '../../infra/auth/roles.decorator';
+import { RolesGuard } from '../../infra/auth/roles.guard';
 import { InspectionsService } from './inspections.service';
 import { CreateInspectionDto } from './dto/create-inspection.dto';
 import { UpdateInspectionDto } from './dto/update-inspection.dto';
@@ -15,7 +20,7 @@ import { QueryInspectionDto } from './dto/query-inspection.dto';
 
 @ApiTags('Inspections')
 @ApiBearerAuth()
-@UseGuards(SupabaseAuthGuard)
+@UseGuards(SupabaseAuthGuard, RolesGuard)
 @Controller('inspections')
 export class InspectionsController {
   constructor(private readonly service: InspectionsService) {}
@@ -32,33 +37,40 @@ export class InspectionsController {
   @ApiQuery({ name: 'to', required: false, type: String, description: 'Data final (yyyy-mm-dd)' })
   @ApiResponse({ status: 200, type: [InspectionResponseDto] })
   @Get()
-  findAll(@Query() query: QueryInspectionDto) {
-    return this.service.findAll(query);
+  findAll(@Query() query: QueryInspectionDto, @CurrentUser() user: AuthUser) {
+    return this.service.findAll(query, user);
   }
 
   // POST
   @ApiOperation({ summary: 'Criar vistoria' })
   @ApiBody({ type: CreateInspectionDto })
   @ApiResponse({ status: 201, type: InspectionResponseDto })
+  @Roles(UserRole.ADMIN, UserRole.USER)
   @Post()
-  create(@Body() dto: CreateInspectionDto) {
-    return this.service.create(dto);
+  create(@Body() dto: CreateInspectionDto, @CurrentUser() user: AuthUser) {
+    return this.service.create(dto, user);
   }
 
   // PUT
   @ApiOperation({ summary: 'Atualizar vistoria' })
   @ApiBody({ type: UpdateInspectionDto })
   @ApiResponse({ status: 200, type: InspectionResponseDto })
+  @Roles(UserRole.ADMIN, UserRole.USER)
   @Put(':id')
-  update(@Param('id') id: number, @Body() dto: UpdateInspectionDto) {
-    return this.service.update(+id, dto);
+  update(
+    @Param('id') id: number,
+    @Body() dto: UpdateInspectionDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.service.update(+id, dto, user);
   }
 
   // DELETE
   @ApiOperation({ summary: 'Deletar vistoria' })
   @ApiResponse({ status: 200 })
+  @Roles(UserRole.ADMIN, UserRole.USER)
   @Delete(':id')
-  remove(@Param('id') id: number) {
-    return this.service.remove(+id);
+  remove(@Param('id') id: number, @CurrentUser() user: AuthUser) {
+    return this.service.remove(+id, user);
   }
 }

@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { AuthUser, isAdmin } from '../../infra/auth/auth-user';
 import { SupabaseService } from '../../infra/supabase/supabase.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
@@ -7,7 +8,7 @@ import { UpdateClientDto } from './dto/update-client.dto';
 export class ClientsService {
   constructor(private readonly supabase: SupabaseService) {}
 
-  async findAll(query: { id?: number; identerprise?: number }) {
+  async findAll(query: { id?: number; identerprise?: number }, user: AuthUser) {
     let q = this.supabase
       .getAdmin()
       .from('tb_clients')
@@ -24,6 +25,17 @@ export class ClientsService {
 
     if (query.id) q = q.eq('id', query.id);
     if (query.identerprise) q = q.eq('identerprise', query.identerprise);
+
+    if (!isAdmin(user)) {
+      if (query.identerprise && !user.enterpriseIds.includes(Number(query.identerprise))) {
+        return [];
+      }
+
+      if (!query.identerprise) {
+        if (user.enterpriseIds.length === 0) return [];
+        q = q.in('identerprise', user.enterpriseIds);
+      }
+    }
 
     const { data, error } = await q;
 

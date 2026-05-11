@@ -8,6 +8,7 @@ export class InspectionResponseDto {
   @ApiProperty() mobuss: boolean;
   @ApiProperty() status: string;
   @ApiProperty({ nullable: true }) idprerejection: number | null;
+  @ApiProperty({ nullable: true }) idslot: number | null;
   @ApiProperty() created_at: string;
   @ApiProperty({ nullable: true }) updated_at: string | null;
   @ApiProperty({ nullable: true }) obs: string | null;

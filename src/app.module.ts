@@ -9,6 +9,7 @@ import { InspectionsModule } from './modules/inspections/inspections.module';
 import { RejectionsModule } from './modules/rejections/rejections.module';
 import { EligibleModule } from './modules/eligible/eligible.module';
 import { TimelineModule } from './modules/timeline/timeline.module';
+import { SlotsModule } from './modules/slots/slots.module';
 
 @Module({
   imports: [
@@ -21,7 +22,8 @@ import { TimelineModule } from './modules/timeline/timeline.module';
     InspectionsModule,
     RejectionsModule,
     EligibleModule,
-    TimelineModule
+    TimelineModule,
+    SlotsModule
   ],
 })
 
