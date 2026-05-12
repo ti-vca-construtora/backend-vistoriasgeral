@@ -36,6 +36,8 @@ export class SlotsService {
         tb_slot_blocks (
           id,
           time,
+          start_time,
+          end_time,
           reason,
           created_at,
           updated_at
@@ -115,19 +117,32 @@ export class SlotsService {
   async createBlocks(id: number, dto: CreateSlotBlockDto) {
     await this.findById(id);
 
-    const times = [...new Set(dto.times)];
-    times.forEach((time) => this.assertValidTime(time));
+    const interval = this.resolveBlockInterval(dto);
+    this.assertValidTime(interval.startTime);
+    this.assertValidTime(interval.endTime);
+
+    if (this.timeToMinutes(interval.endTime) <= this.timeToMinutes(interval.startTime)) {
+      throw new BadRequestException('Horario final deve ser maior que o inicial');
+    }
 
     const { data: existingBlocks, error: blocksError } = await this.admin
       .from('tb_slot_blocks')
-      .select('time')
-      .eq('idslot', id)
-      .in('time', times);
+      .select('id, time, start_time, end_time')
+      .eq('idslot', id);
 
     if (blocksError) throw new BadRequestException(blocksError.message);
 
-    if ((existingBlocks?.length ?? 0) > 0) {
-      throw new BadRequestException('Um ou mais horarios ja estao bloqueados');
+    const hasOverlap = (existingBlocks ?? []).some((block) =>
+      this.intervalsOverlap(
+        interval.startTime,
+        interval.endTime,
+        this.normalizeDbTime(block.start_time ?? block.time),
+        this.normalizeDbTime(block.end_time ?? this.addMinutes(block.time, 30)),
+      ),
+    );
+
+    if (hasOverlap) {
+      throw new BadRequestException('Ja existe bloqueio para parte deste intervalo');
     }
 
     const { data: inspections, error: inspectionsError } = await this.admin
@@ -138,22 +153,26 @@ export class SlotsService {
     if (inspectionsError) throw new BadRequestException(inspectionsError.message);
 
     const occupied = (inspections ?? []).some((inspection) =>
-      times.includes(this.extractBrazilTime(inspection.datetime)),
+      this.timeWithinInterval(
+        this.extractBrazilTime(inspection.datetime),
+        interval.startTime,
+        interval.endTime,
+      ),
     );
 
     if (occupied) {
-      throw new BadRequestException('Nao e possivel bloquear horario ja agendado');
+      throw new BadRequestException('Nao e possivel bloquear intervalo com vistoria ja agendada');
     }
 
     const { data, error } = await this.admin
       .from('tb_slot_blocks')
-      .insert(
-        times.map((time) => ({
-          idslot: id,
-          time,
-          reason: dto.reason ?? null,
-        })),
-      )
+      .insert({
+        idslot: id,
+        time: interval.startTime,
+        start_time: interval.startTime,
+        end_time: interval.endTime,
+        reason: dto.reason ?? null,
+      })
       .select();
 
     if (error) throw new BadRequestException(error.message);
@@ -252,6 +271,59 @@ export class SlotsService {
     if (hour > 23 || minute > 59) {
       throw new BadRequestException('Horario invalido');
     }
+  }
+
+  private resolveBlockInterval(dto: CreateSlotBlockDto) {
+    if (dto.startTime && dto.endTime) {
+      return {
+        startTime: dto.startTime,
+        endTime: dto.endTime,
+      };
+    }
+
+    const times = [...new Set(dto.times ?? [])].sort(
+      (a, b) => this.timeToMinutes(a) - this.timeToMinutes(b),
+    );
+
+    if (times.length === 0) {
+      throw new BadRequestException('Informe startTime/endTime ou times para criar o bloqueio');
+    }
+
+    return {
+      startTime: times[0],
+      endTime: this.addMinutes(times[times.length - 1], 30),
+    };
+  }
+
+  private normalizeDbTime(time: string) {
+    return time.slice(0, 5);
+  }
+
+  private timeToMinutes(time: string) {
+    const [hour, minute] = this.normalizeDbTime(time).split(':').map(Number);
+    return hour * 60 + minute;
+  }
+
+  private addMinutes(time: string, minutes: number) {
+    const total = this.timeToMinutes(time) + minutes;
+    const hour = Math.floor(total / 60);
+    const minute = total % 60;
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  }
+
+  private intervalsOverlap(
+    startA: string,
+    endA: string,
+    startB: string,
+    endB: string,
+  ) {
+    return this.timeToMinutes(startA) < this.timeToMinutes(endB)
+      && this.timeToMinutes(startB) < this.timeToMinutes(endA);
+  }
+
+  private timeWithinInterval(time: string, start: string, end: string) {
+    const minutes = this.timeToMinutes(time);
+    return minutes >= this.timeToMinutes(start) && minutes < this.timeToMinutes(end);
   }
 
   private todayInBrazil() {

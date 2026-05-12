@@ -281,15 +281,23 @@ export class InspectionsService {
       throw new BadRequestException('Nao existe slot ativo para este empreendimento nesta data');
     }
 
-    const { data: block, error: blockError } = await this.admin
+    const { data: blocks, error: blockError } = await this.admin
       .from('tb_slot_blocks')
-      .select('id')
-      .eq('idslot', slot.id)
-      .eq('time', time)
-      .maybeSingle();
+      .select('id, time, start_time, end_time')
+      .eq('idslot', slot.id);
 
     if (blockError) throw new BadRequestException(blockError.message);
-    if (block) throw new BadRequestException('Horario bloqueado para este slot');
+    const isBlocked = (blocks ?? []).some((block) =>
+      this.timeWithinInterval(
+        time,
+        this.normalizeDbTime(block.start_time ?? block.time),
+        this.normalizeDbTime(block.end_time ?? this.addMinutes(block.time, 30)),
+      ),
+    );
+
+    if (isBlocked) {
+      throw new BadRequestException('Horario bloqueado para este slot');
+    }
 
     return slot;
   }
@@ -325,5 +333,26 @@ export class InspectionsService {
       minute: '2-digit',
       hour12: false,
     }).format(new Date(datetime));
+  }
+
+  private normalizeDbTime(time: string) {
+    return time.slice(0, 5);
+  }
+
+  private timeToMinutes(time: string) {
+    const [hour, minute] = this.normalizeDbTime(time).split(':').map(Number);
+    return hour * 60 + minute;
+  }
+
+  private addMinutes(time: string, minutes: number) {
+    const total = this.timeToMinutes(time) + minutes;
+    const hour = Math.floor(total / 60);
+    const minute = total % 60;
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  }
+
+  private timeWithinInterval(time: string, start: string, end: string) {
+    const minutes = this.timeToMinutes(time);
+    return minutes >= this.timeToMinutes(start) && minutes < this.timeToMinutes(end);
   }
 }
