@@ -184,6 +184,39 @@ export class SlotsService {
     return { success: true };
   }
 
+  async remove(id: number) {
+    await this.findById(id);
+
+    const { data: inspections, error: inspectionsError } = await this.admin
+      .from('tb_inspections')
+      .select('id, datetime')
+      .eq('idslot', id)
+      .limit(3);
+
+    if (inspectionsError) throw new BadRequestException(inspectionsError.message);
+
+    if ((inspections?.length ?? 0) > 0) {
+      throw new BadRequestException(
+        'Nao e possivel remover este slot porque ja existem vistorias agendadas nele. Remova ou reagende as vistorias antes de excluir o slot.',
+      );
+    }
+
+    const { error: blocksError } = await this.admin
+      .from('tb_slot_blocks')
+      .delete()
+      .eq('idslot', id);
+
+    if (blocksError) throw new BadRequestException(blocksError.message);
+
+    const { error } = await this.admin
+      .from('tb_inspection_slots')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw new BadRequestException(error.message);
+    return { success: true };
+  }
+
   private async findById(id: number) {
     const { data, error } = await this.admin
       .from('tb_inspection_slots')
@@ -239,4 +272,3 @@ export class SlotsService {
     }).format(new Date(datetime));
   }
 }
-

@@ -76,4 +76,11 @@ export class SlotsController {
   removeBlock(@Param('id') id: number, @Param('blockId') blockId: number) {
     return this.service.removeBlock(+id, +blockId);
   }
+
+  @ApiOperation({ summary: 'Remover slot de vistoria' })
+  @Roles(UserRole.ADMIN)
+  @Delete(':id')
+  remove(@Param('id') id: number) {
+    return this.service.remove(+id);
+  }
 }
