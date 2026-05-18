@@ -17,6 +17,7 @@ export class ClientsService {
         name,
         unit,
         seller,
+        phone,
         identerprise,
         created_at,
         updated_at,
