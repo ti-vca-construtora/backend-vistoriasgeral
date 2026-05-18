@@ -26,6 +26,13 @@ export class ClientResponseDto {
   seller: string;
 
   @ApiProperty({
+    description: 'Telefone do cliente',
+    example: '5511987654321',
+    nullable: true,
+  })
+  phone: string | null;
+
+  @ApiProperty({
     description: 'ID da empresa',
     example: 1,
   })

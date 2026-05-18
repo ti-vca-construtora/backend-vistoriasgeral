@@ -30,6 +30,15 @@ export class UpdateClientDto {
   seller?: string;
 
   @ApiProperty({
+    description: 'Telefone do cliente',
+    example: '5511987654321',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @ApiProperty({
     description: 'ID da empresa',
     example: 1,
     required: false,
