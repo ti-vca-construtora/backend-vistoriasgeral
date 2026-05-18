@@ -39,7 +39,9 @@ export class InspectionsService {
         `
         *,
         tb_clients!inner (
-          identerprise
+          identerprise,
+          name,
+          unit
         )
       `,
       );
@@ -78,9 +80,10 @@ export class InspectionsService {
     const { data, error } = await q;
     if (error) throw new BadRequestException(error.message);
 
-    return (data ?? []).map((inspection) => ({
+    return (data ?? []).map(({ tb_clients, ...inspection }) => ({
       ...inspection,
-      tb_clients: undefined,
+      client_name: (tb_clients as any)?.name ?? null,
+      client_unit: (tb_clients as any)?.unit ?? null,
     }));
   }
 
