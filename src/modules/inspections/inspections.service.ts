@@ -90,7 +90,7 @@ export class InspectionsService {
   async create(dto: CreateInspectionDto, user: AuthUser) {
     const client = await this.findClient(dto.idclient);
     this.assertEnterpriseAccess(client.identerprise, user);
-    this.assertNotPastDateTime(dto.datetime);
+    if (!isAdmin(user)) this.assertNotPastDateTime(dto.datetime);
 
     const slot = await this.findAvailableSlot(client.identerprise, dto.datetime);
 
@@ -196,7 +196,7 @@ export class InspectionsService {
     const payload: Record<string, unknown> = { ...dto };
 
     if (dto.datetime) {
-      this.assertNotPastDateTime(dto.datetime);
+      if (!isAdmin(user)) this.assertNotPastDateTime(dto.datetime);
       const slot = await this.findAvailableSlot(
         currentClient.identerprise,
         dto.datetime,
