@@ -50,8 +50,8 @@ export class SlotsController {
   @ApiBody({ type: CreateSlotDto })
   @Roles(UserRole.ADMIN)
   @Post()
-  create(@Body() dto: CreateSlotDto) {
-    return this.service.create(dto);
+  create(@Body() dto: CreateSlotDto, @CurrentUser() user: AuthUser) {
+    return this.service.create(dto, user);
   }
 
   @ApiOperation({ summary: 'Atualizar status do slot' })

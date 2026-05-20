@@ -62,8 +62,8 @@ export class SlotsService {
     return data ?? [];
   }
 
-  async create(dto: CreateSlotDto) {
-    this.assertNotPastDate(dto.date);
+  async create(dto: CreateSlotDto, user?: AuthUser) {
+    if (!user || !isAdmin(user)) this.assertNotPastDate(dto.date);
 
     const { data: enterprise } = await this.admin
       .from('tb_enterprises')
