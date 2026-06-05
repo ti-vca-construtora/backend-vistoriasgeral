@@ -4,10 +4,16 @@ import { OverviewService } from './overview.service';
 import { OverviewResponseDto } from './dto/overview-response.dto';
 import { SupabaseAuthGuard } from '../../infra/auth/supabase-auth.guard';
 import { UpdateOverviewDto } from './dto/update-overview.dto';
+import { UserRole } from '../../infra/auth/auth-user';
+import type { AuthUser } from '../../infra/auth/auth-user';
+import { CurrentUser } from '../../infra/auth/current-user.decorator';
+import { Roles } from '../../infra/auth/roles.decorator';
+import { RolesGuard } from '../../infra/auth/roles.guard';
 
 @ApiTags('Overview')
 @ApiBearerAuth()
-@UseGuards(SupabaseAuthGuard)
+@UseGuards(SupabaseAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN, UserRole.USER)
 @Controller('overview')
 export class OverviewController {
   constructor(private readonly service: OverviewService) {}
@@ -26,8 +32,9 @@ export class OverviewController {
     @Query('idclient') idclient?: number,
     @Query('status') status?: string,
     @Query('situation') situation?: string,
+    @CurrentUser() user?: AuthUser,
   ) {
-    return this.service.findAll({ id, idclient, status, situation });
+    return this.service.findAll({ id, idclient, status, situation }, user!);
   }
 
   // PUT
@@ -40,8 +47,9 @@ export class OverviewController {
   update(
     @Param('id') id: number,
     @Body() dto: UpdateOverviewDto,
+    @CurrentUser() user: AuthUser,
   ) {
-    return this.service.update(+id, dto);
+    return this.service.update(+id, dto, user);
   }
 
   // DELETE (removed — overview deletions are handled by client cascade)

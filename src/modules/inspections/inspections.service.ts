@@ -1,4 +1,10 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { AuthUser, isAdmin } from '../../infra/auth/auth-user';
 import { SupabaseService } from '../../infra/supabase/supabase.service';
 import { CreateInspectionDto } from './dto/create-inspection.dto';
 import { UpdateInspectionDto } from './dto/update-inspection.dto';
@@ -22,27 +28,39 @@ export class InspectionsService {
     return this.supabaseService.getAdmin();
   }
 
-  // GET
-  async findAll(qry: FindQuery) {
-    // Validar que 'to' >= 'from'
-    if (qry.from && qry.to) {
-      if (qry.to < qry.from) {
-        throw new BadRequestException('A data final (to) deve ser maior ou igual à data inicial (from)');
-      }
+  async findAll(qry: FindQuery, user: AuthUser) {
+    if (qry.from && qry.to && qry.to < qry.from) {
+      throw new BadRequestException('A data final (to) deve ser maior ou igual a data inicial (from)');
     }
 
-    let q = this.admin.from('tb_inspections').select('*');
+    let q = this.admin
+      .from('tb_inspections')
+      .select(
+        `
+        *,
+        tb_clients!inner (
+          identerprise,
+          name,
+          unit
+        )
+      `,
+      );
 
     if (qry.id) q = q.eq('id', qry.id);
-    if (qry.idclient) q = q.eq('idclient', qry.idclient);
+    if (qry.idclient) {
+      await this.assertClientAccess(qry.idclient, user);
+      q = q.eq('idclient', qry.idclient);
+    } else if (!isAdmin(user)) {
+      if (user.enterpriseIds.length === 0) return [];
+      q = q.in('tb_clients.identerprise', user.enterpriseIds);
+    }
     if (qry.inspector) q = q.ilike('inspector', `%${qry.inspector}%`);
     if (typeof qry.mobuss === 'boolean') q = q.eq('mobuss', qry.mobuss);
     if (qry.status) q = q.eq('status', qry.status);
     if (qry.idprerejection) q = q.eq('idprerejection', qry.idprerejection);
 
-    // Filtro de data com timezone Brasil (UTC-3)
     if (qry.from || qry.to) {
-      const BRAZIL_OFFSET = 3 * 60 * 60 * 1000; // 3 horas em ms
+      const BRAZIL_OFFSET = 3 * 60 * 60 * 1000;
 
       if (qry.from) {
         const [ano, mes, dia] = qry.from.split('-').map(Number);
@@ -53,7 +71,7 @@ export class InspectionsService {
 
       if (qry.to) {
         const [ano, mes, dia] = qry.to.split('-').map(Number);
-        const dataFim = new Date(ano, mes - 1, dia + 1); // Próximo dia
+        const dataFim = new Date(ano, mes - 1, dia + 1);
         const dataFimUtc = new Date(dataFim.getTime() - BRAZIL_OFFSET);
         q = q.lt('datetime', dataFimUtc.toISOString());
       }
@@ -61,12 +79,20 @@ export class InspectionsService {
 
     const { data, error } = await q;
     if (error) throw new BadRequestException(error.message);
-    return data;
+
+    return (data ?? []).map(({ tb_clients, ...inspection }) => ({
+      ...inspection,
+      client_name: (tb_clients as any)?.name ?? null,
+      client_unit: (tb_clients as any)?.unit ?? null,
+    }));
   }
 
-  // POST
-  async create(dto: CreateInspectionDto) {
-    // 1) Overview precisa estar LIBERADA
+  async create(dto: CreateInspectionDto, user: AuthUser) {
+    const client = await this.findClient(dto.idclient);
+    this.assertEnterpriseAccess(client.identerprise, user);
+
+    await this.assertNotBlocked(client.identerprise, dto.datetime);
+
     const { data: overview } = await this.admin
       .from('tb_general')
       .select('status')
@@ -74,10 +100,9 @@ export class InspectionsService {
       .maybeSingle();
 
     if (!overview || overview.status !== 'LIBERADA') {
-      throw new BadRequestException('Unidade não está liberada para vistoria');
+      throw new BadRequestException('Unidade nao esta liberada para vistoria');
     }
 
-    // 2) Não permitir vistoria paralela
     const { data: active } = await this.admin
       .from('tb_inspections')
       .select('id')
@@ -86,10 +111,9 @@ export class InspectionsService {
       .limit(1);
 
     if (active && active.length > 0) {
-      throw new BadRequestException('Já existe uma vistoria ativa para este cliente');
+      throw new BadRequestException('Ja existe uma vistoria ativa para este cliente');
     }
 
-    // 3) Se vier idprerejection, fechar recusa aguardando
     if (dto.idprerejection) {
       const { data: rejection } = await this.admin
         .from('tb_rejections')
@@ -105,7 +129,6 @@ export class InspectionsService {
       }
     }
 
-    // 4) Criar vistoria
     const { data, error } = await this.admin
       .from('tb_inspections')
       .insert({
@@ -124,22 +147,22 @@ export class InspectionsService {
     return data;
   }
 
-  // PUT
-  async update(id: number, dto: UpdateInspectionDto) {
+  async update(id: number, dto: UpdateInspectionDto, user: AuthUser) {
     const { data: current } = await this.admin
       .from('tb_inspections')
       .select('*')
       .eq('id', id)
       .maybeSingle();
 
-    if (!current) throw new NotFoundException('Vistoria não encontrada');
+    if (!current) throw new NotFoundException('Vistoria nao encontrada');
 
-    // 1) Não permitir mudar STATUS se estiver com RECUSA (outros campos podem ser editados)
+    const currentClient = await this.findClient(current.idclient);
+    this.assertEnterpriseAccess(currentClient.identerprise, user);
+
     if (dto.status && dto.status !== 'RECUSA' && current.status === 'RECUSA') {
-      throw new BadRequestException('Não é possível mudar o status de uma vistoria marcada como RECUSA. Exclua a recusa primeiro.');
+      throw new BadRequestException('Nao e possivel mudar o status de uma vistoria marcada como RECUSA. Exclua a recusa primeiro.');
     }
 
-    // 2) Não permitir ACEITE se existir recusa
     if (dto.status === 'ACEITE') {
       const { data: rej } = await this.admin
         .from('tb_rejections')
@@ -148,11 +171,10 @@ export class InspectionsService {
         .limit(1);
 
       if (rej && rej.length > 0) {
-        throw new BadRequestException('Não é possível aceitar vistoria com recusa existente');
+        throw new BadRequestException('Nao e possivel aceitar vistoria com recusa existente');
       }
     }
 
-    // 3) Se status = RECUSA → cria recusa automaticamente
     if (dto.status === 'RECUSA') {
       const { data: exists } = await this.admin
         .from('tb_rejections')
@@ -169,9 +191,15 @@ export class InspectionsService {
       }
     }
 
+    const payload: Record<string, unknown> = { ...dto };
+
+    if (dto.datetime) {
+      await this.assertNotBlocked(currentClient.identerprise, dto.datetime);
+    }
+
     const { data, error } = await this.admin
       .from('tb_inspections')
-      .update(dto)
+      .update(payload)
       .eq('id', id)
       .select()
       .single();
@@ -180,8 +208,18 @@ export class InspectionsService {
     return data;
   }
 
-  // DELETE
-  async remove(id: number) {
+  async remove(id: number, user: AuthUser) {
+    const { data: current } = await this.admin
+      .from('tb_inspections')
+      .select('idclient')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (!current) throw new NotFoundException('Vistoria nao encontrada');
+
+    const client = await this.findClient(current.idclient);
+    this.assertEnterpriseAccess(client.identerprise, user);
+
     const { data: hasRej } = await this.admin
       .from('tb_rejections')
       .select('id')
@@ -189,11 +227,92 @@ export class InspectionsService {
       .limit(1);
 
     if (hasRej && hasRej.length > 0) {
-      throw new BadRequestException('Não é possível deletar vistoria com recusa vinculada');
+      throw new BadRequestException('Nao e possivel deletar vistoria com recusa vinculada');
     }
 
     const { error } = await this.admin.from('tb_inspections').delete().eq('id', id);
     if (error) throw new BadRequestException(error.message);
     return { success: true };
+  }
+
+  private async findClient(idclient: number) {
+    const { data, error } = await this.admin
+      .from('tb_clients')
+      .select('id, identerprise')
+      .eq('id', idclient)
+      .maybeSingle();
+
+    if (error) throw new BadRequestException(error.message);
+    if (!data) throw new BadRequestException('Cliente informado nao existe');
+    return data;
+  }
+
+  private async assertClientAccess(idclient: number, user: AuthUser) {
+    const client = await this.findClient(idclient);
+    this.assertEnterpriseAccess(client.identerprise, user);
+  }
+
+  private assertEnterpriseAccess(identerprise: number, user: AuthUser) {
+    if (isAdmin(user)) return;
+
+    if (!user.enterpriseIds.includes(Number(identerprise))) {
+      throw new ForbiddenException('Usuario sem acesso ao empreendimento');
+    }
+  }
+
+  private async assertNotBlocked(identerprise: number, datetime: string) {
+    const date = this.extractBrazilDate(datetime);
+    const time = this.extractBrazilTime(datetime);
+
+    const { data: blocks, error } = await this.admin
+      .from('tb_inspection_blocks')
+      .select('id, start_time, end_time')
+      .eq('identerprise', identerprise)
+      .eq('date', date);
+
+    if (error) throw new BadRequestException(error.message);
+    const isBlocked = (blocks ?? []).some((block) =>
+      this.timeWithinInterval(
+        time,
+        this.normalizeDbTime(block.start_time),
+        this.normalizeDbTime(block.end_time),
+      ),
+    );
+
+    if (isBlocked) {
+      throw new BadRequestException('Horario bloqueado para este empreendimento');
+    }
+  }
+
+  private extractBrazilDate(datetime: string) {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date(datetime));
+  }
+
+  private extractBrazilTime(datetime: string) {
+    return new Intl.DateTimeFormat('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(new Date(datetime));
+  }
+
+  private normalizeDbTime(time: string) {
+    return time.slice(0, 5);
+  }
+
+  private timeToMinutes(time: string) {
+    const [hour, minute] = this.normalizeDbTime(time).split(':').map(Number);
+    return hour * 60 + minute;
+  }
+
+  private timeWithinInterval(time: string, start: string, end: string) {
+    const minutes = this.timeToMinutes(time);
+    return minutes >= this.timeToMinutes(start) && minutes < this.timeToMinutes(end);
   }
 }

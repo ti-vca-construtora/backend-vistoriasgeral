@@ -22,10 +22,14 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { QueryUserDto } from './dto/query-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { SupabaseAuthGuard } from '../../infra/auth/supabase-auth.guard';
+import { RolesGuard } from '../../infra/auth/roles.guard';
+import { Roles } from '../../infra/auth/roles.decorator';
+import { UserRole } from '../../infra/auth/auth-user';
 
 @ApiTags('Users')
 @ApiBearerAuth()
-@UseGuards(SupabaseAuthGuard)
+@UseGuards(SupabaseAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN)
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}

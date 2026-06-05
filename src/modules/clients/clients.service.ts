@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { AuthUser, isAdmin } from '../../infra/auth/auth-user';
 import { SupabaseService } from '../../infra/supabase/supabase.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
@@ -7,7 +8,7 @@ import { UpdateClientDto } from './dto/update-client.dto';
 export class ClientsService {
   constructor(private readonly supabase: SupabaseService) {}
 
-  async findAll(query: { id?: number; identerprise?: number }) {
+  async findAll(query: { id?: number; identerprise?: number }, user: AuthUser) {
     let q = this.supabase
       .getAdmin()
       .from('tb_clients')
@@ -26,6 +27,17 @@ export class ClientsService {
     if (query.id) q = q.eq('id', query.id);
     if (query.identerprise) q = q.eq('identerprise', query.identerprise);
 
+    if (!isAdmin(user)) {
+      if (query.identerprise && !user.enterpriseIds.includes(Number(query.identerprise))) {
+        return [];
+      }
+
+      if (!query.identerprise) {
+        if (user.enterpriseIds.length === 0) return [];
+        q = q.in('identerprise', user.enterpriseIds);
+      }
+    }
+
     const { data, error } = await q;
 
     if (error) {
@@ -33,7 +45,6 @@ export class ClientsService {
     }
 
     return data.map(({ nameenterprise, ...rest }) => {
-      // Trata tanto array quanto objeto
       const enterpriseName = Array.isArray(nameenterprise)
         ? nameenterprise[0]?.name ?? null
         : (nameenterprise as any)?.name ?? null;
@@ -75,8 +86,7 @@ export class ClientsService {
 
       throw new BadRequestException(error.message);
     }
-    
-    // 3️⃣ Criar overview automaticamente para o cliente recém-criado
+
     try {
       const payload = {
         idclient: data.id,
@@ -92,7 +102,7 @@ export class ClientsService {
         .from('tb_general')
         .insert(payload);
     } catch (e) {
-      // não interromper a criação do cliente se a criação do overview falhar
+      // Não interromper a criação do cliente se a criação do overview falhar.
     }
 
     return data;
@@ -164,11 +174,8 @@ export class ClientsService {
     return { message: 'Cliente excluído com sucesso' };
   }
 
-  // ── BULK IMPORT ──────────────────────────────────────────────
   async bulkCreate(clients: CreateClientDto[]) {
     const admin = this.supabase.getAdmin();
-
-    // 1) Buscar clientes já existentes no banco para os empreendimentos envolvidos
     const enterpriseIds = [...new Set(clients.map(c => c.identerprise))];
 
     const { data: existing } = await admin
@@ -176,12 +183,10 @@ export class ClientsService {
       .select('name, unit, identerprise')
       .in('identerprise', enterpriseIds);
 
-    // Criar set para lookup rápido: "name|unit|identerprise"
     const existingSet = new Set(
       (existing ?? []).map(e => `${e.name}|${e.unit}|${e.identerprise}`),
     );
 
-    // 2) Separar novos vs duplicados
     const toInsert: CreateClientDto[] = [];
     const skippedDetails: { name: string; unit: string; reason: string }[] = [];
     const seenInBatch = new Set<string>();
@@ -207,7 +212,6 @@ export class ClientsService {
       }
     }
 
-    // 3) Inserir em lotes de 500 (limite seguro do Supabase)
     const BATCH_SIZE = 500;
     const insertedClients: any[] = [];
 
@@ -228,7 +232,6 @@ export class ClientsService {
       insertedClients.push(...(data ?? []));
     }
 
-    // 4) Criar overviews em lote para todos os clientes inseridos
     if (insertedClients.length > 0) {
       const overviews = insertedClients.map(c => ({
         idclient: c.id,

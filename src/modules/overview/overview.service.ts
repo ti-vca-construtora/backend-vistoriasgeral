@@ -1,4 +1,5 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { AuthUser, isAdmin } from '../../infra/auth/auth-user';
 import { SupabaseService } from '../../infra/supabase/supabase.service';
 import { CreateOverviewDto } from './dto/create-overview.dto';
 import { UpdateOverviewDto } from './dto/update-overview.dto';
@@ -20,7 +21,7 @@ export class OverviewService {
     return this.supabaseService.getAdmin();
   }
 
-  async findAll(query: FindOverviewQuery) {
+  async findAll(query: FindOverviewQuery, user: AuthUser) {
     // 1) Busca overviews (LEFT: pode não existir)
     let q = this.admin
       .from('tb_general')
@@ -40,7 +41,15 @@ export class OverviewService {
       `);
 
     if (query.id) q = q.eq('id', query.id);
-    if (query.idclient) q = q.eq('idclient', query.idclient);
+    if (query.idclient) {
+      await this.assertClientAccess(query.idclient, user);
+      q = q.eq('idclient', query.idclient);
+    } else if (!isAdmin(user)) {
+      if (user.enterpriseIds.length === 0) return [];
+      const allowedClientIds = await this.findAllowedClientIds(user);
+      if (allowedClientIds.length === 0) return [];
+      q = q.in('idclient', allowedClientIds);
+    }
     if (query.status) q = q.eq('status', query.status);
     if (query.situation) q = q.eq('situation', query.situation);
 
@@ -167,7 +176,7 @@ export class OverviewService {
     return data;
   }
 
-  async update(id: number, dto: UpdateOverviewDto) {
+  async update(id: number, dto: UpdateOverviewDto, user: AuthUser) {
     // 1️⃣ Verifica se overview existe
     const { data: current, error: findError } = await this.admin
       .from('tb_general')
@@ -184,6 +193,8 @@ export class OverviewService {
     }
 
     // 2️⃣ Não permitir voltar de LIBERADA para PENDENTE quando já houver vistoria/recusa
+    await this.assertClientAccess(current.idclient, user);
+
     if (
       dto.status === StatusGeneral.PENDENTE
       && current.status === StatusGeneral.LIBERADA
@@ -275,5 +286,32 @@ export class OverviewService {
     }
 
     return { success: true };
+  }
+
+  private async findAllowedClientIds(user: AuthUser) {
+    const { data, error } = await this.admin
+      .from('tb_clients')
+      .select('id')
+      .in('identerprise', user.enterpriseIds);
+
+    if (error) throw new BadRequestException(error.message);
+    return (data ?? []).map((client) => client.id);
+  }
+
+  private async assertClientAccess(idclient: number, user: AuthUser) {
+    if (isAdmin(user)) return;
+
+    const { data, error } = await this.admin
+      .from('tb_clients')
+      .select('identerprise')
+      .eq('id', idclient)
+      .maybeSingle();
+
+    if (error) throw new BadRequestException(error.message);
+    if (!data) throw new NotFoundException('Cliente nao encontrado');
+
+    if (!user.enterpriseIds.includes(Number(data.identerprise))) {
+      throw new ForbiddenException('Usuario sem acesso ao empreendimento');
+    }
   }
 }

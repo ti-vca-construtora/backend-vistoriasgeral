@@ -8,7 +8,17 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
 
-    app.useGlobalPipes(
+  app.enableCors({
+    origin: [
+      'http://localhost:3010',
+      'http://127.0.0.1:3010',
+      'https://studio.vcatech.cloud',
+    ],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
+
+  app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,          // remove campos extras
       forbidNonWhitelisted: true, // erro se mandar campo que não existe

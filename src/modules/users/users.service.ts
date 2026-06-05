@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { UserRole } from '../../infra/auth/auth-user';
 import { SupabaseService } from '../../infra/supabase/supabase.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -12,7 +17,7 @@ export class UsersService {
   }
 
   async create(dto: CreateUserDto) {
-    const { email, password, name } = dto;
+    const { email, password, name, role, enterpriseIds } = dto;
 
     const { data, error } = await this.admin.auth.admin.createUser({
       email,
@@ -26,13 +31,12 @@ export class UsersService {
 
     const user = data.user;
 
-    const { error: insertError } = await this.admin
-      .from('tb_users')
-      .insert({
-        id: user.id,
-        email,
-        name,
-      });
+    const { error: insertError } = await this.admin.from('tb_users').insert({
+      id: user.id,
+      email,
+      name,
+      role: role ?? UserRole.USER,
+    });
 
     if (insertError) {
       const { error: rollbackError } = await this.admin.auth.admin.deleteUser(
@@ -46,9 +50,11 @@ export class UsersService {
       }
 
       throw new BadRequestException(
-        `Falha ao inserir em tb_users (${insertError.message}). O usuário no auth foi revertido automaticamente.`,
+        `Falha ao inserir em tb_users (${insertError.message}). O usuario no auth foi revertido automaticamente.`,
       );
     }
+
+    await this.replaceEnterpriseLinks(user.id, enterpriseIds ?? []);
 
     return this.findById(user.id);
   }
@@ -56,46 +62,79 @@ export class UsersService {
   async findAll() {
     const { data, error } = await this.admin
       .from('tb_users')
-      .select('*')
+      .select(
+        `
+        *,
+        tb_user_enterprises (
+          identerprise,
+          tb_enterprises (
+            id,
+            name
+          )
+        )
+      `,
+      )
       .order('created_at', { ascending: false });
 
     if (error) {
       throw new BadRequestException(error.message);
     }
 
-    return data;
+    return (data ?? []).map((user) => this.mapUser(user));
   }
 
   async findById(id: string) {
     const { data, error } = await this.admin
       .from('tb_users')
-      .select('*')
+      .select(
+        `
+        *,
+        tb_user_enterprises (
+          identerprise,
+          tb_enterprises (
+            id,
+            name
+          )
+        )
+      `,
+      )
       .eq('id', id)
       .single();
 
     if (error || !data) {
-      throw new NotFoundException('Usuário não encontrado');
+      throw new NotFoundException('Usuario nao encontrado');
     }
 
-    return data;
+    return this.mapUser(data);
   }
 
   async findByEmail(email: string) {
     const { data, error } = await this.admin
       .from('tb_users')
-      .select('*')
+      .select(
+        `
+        *,
+        tb_user_enterprises (
+          identerprise,
+          tb_enterprises (
+            id,
+            name
+          )
+        )
+      `,
+      )
       .eq('email', email)
       .single();
 
     if (error || !data) {
-      throw new NotFoundException('Usuário não encontrado');
+      throw new NotFoundException('Usuario nao encontrado');
     }
 
-    return data;
+    return this.mapUser(data);
   }
 
   async update(id: string, dto: UpdateUserDto) {
-    const { email, password, name } = dto;
+    const { email, password, name, role, enterpriseIds } = dto;
 
     if (email || password) {
       const { error } = await this.admin.auth.admin.updateUserById(id, {
@@ -108,13 +147,24 @@ export class UsersService {
       }
     }
 
-    const { error: updateError } = await this.admin
-      .from('tb_users')
-      .update({ email, name })
-      .eq('id', id);
+    const payload: Record<string, unknown> = {};
+    if (email !== undefined) payload.email = email;
+    if (name !== undefined) payload.name = name;
+    if (role !== undefined) payload.role = role;
 
-    if (updateError) {
-      throw new BadRequestException(updateError.message);
+    if (Object.keys(payload).length > 0) {
+      const { error: updateError } = await this.admin
+        .from('tb_users')
+        .update(payload)
+        .eq('id', id);
+
+      if (updateError) {
+        throw new BadRequestException(updateError.message);
+      }
+    }
+
+    if (enterpriseIds !== undefined) {
+      await this.replaceEnterpriseLinks(id, enterpriseIds);
     }
 
     return this.findById(id);
@@ -128,5 +178,55 @@ export class UsersService {
     }
 
     return { success: true };
+  }
+
+  private async replaceEnterpriseLinks(iduser: string, enterpriseIds: number[]) {
+    const uniqueEnterpriseIds = [...new Set(enterpriseIds)];
+
+    const { error: deleteError } = await this.admin
+      .from('tb_user_enterprises')
+      .delete()
+      .eq('iduser', iduser);
+
+    if (deleteError) {
+      throw new BadRequestException(deleteError.message);
+    }
+
+    if (uniqueEnterpriseIds.length === 0) {
+      return;
+    }
+
+    const { error: insertError } = await this.admin
+      .from('tb_user_enterprises')
+      .insert(
+        uniqueEnterpriseIds.map((identerprise) => ({
+          iduser,
+          identerprise,
+        })),
+      );
+
+    if (insertError) {
+      throw new BadRequestException(insertError.message);
+    }
+  }
+
+  private mapUser(user: any) {
+    const links = user.tb_user_enterprises ?? [];
+
+    return {
+      ...user,
+      role: user.role ?? UserRole.USER,
+      enterprises: links.map((link: any) => {
+        const enterprise = Array.isArray(link.tb_enterprises)
+          ? link.tb_enterprises[0]
+          : link.tb_enterprises;
+
+        return {
+          id: Number(link.identerprise),
+          name: enterprise?.name ?? null,
+        };
+      }),
+      tb_user_enterprises: undefined,
+    };
   }
 }

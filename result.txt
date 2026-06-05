@@ -1,0 +1,85 @@
+PROMPT PARA O FRONT
+
+O backend mudou a lógica de agenda de vistorias: não existem mais slots diários. O agendamento agora é direto em POST /inspections, e o backend apenas verifica se existe algum bloqueio de horário para o empreendimento do cliente na data/hora escolhida.
+
+Resumo da nova regra:
+- Remover do front qualquer fluxo obrigatório de criar slot do dia antes de agendar.
+- Remover chamadas para /slots.
+- Usar /blocks para cadastrar, listar, editar e remover bloqueios de agenda por empreendimento.
+- O bloqueio é por empreendimento, data e intervalo de horário.
+- Uma vistoria só é recusada pelo backend se o horário escolhido cair dentro de um bloqueio daquele mesmo empreendimento e daquela mesma data.
+- O mesmo horário pode estar bloqueado em um empreendimento e livre em outro.
+
+Endpoints novos de bloqueios:
+
+GET /blocks?identerprise=1&from=2026-06-01&to=2026-06-30
+Lista bloqueios. identerprise, from e to são opcionais. Usuários não-admin recebem somente empreendimentos permitidos.
+
+POST /blocks
+Cria bloqueio. Apenas ADMIN.
+
+Payload com intervalo:
+{
+  "identerprise": 1,
+  "date": "2026-06-10",
+  "startTime": "09:00",
+  "endTime": "10:00",
+  "reason": "Equipe indisponível"
+}
+
+Payload com horários avulsos:
+{
+  "identerprise": 1,
+  "date": "2026-06-10",
+  "times": ["09:00", "14:30"],
+  "reason": "Equipe indisponível"
+}
+
+Observação sobre times:
+- Cada item em times cria um bloqueio individual de 30 minutos.
+- Exemplo: "09:00" bloqueia 09:00 até 09:30.
+- Exemplo: "14:30" bloqueia 14:30 até 15:00.
+
+PUT /blocks/:id
+Atualiza bloqueio. Apenas ADMIN.
+
+Payload:
+{
+  "date": "2026-06-10",
+  "startTime": "10:00",
+  "endTime": "11:00",
+  "reason": "Novo motivo"
+}
+
+DELETE /blocks/:id
+Remove bloqueio. Apenas ADMIN.
+
+Mudança em inspeções:
+
+POST /inspections continua sendo usado para agendar diretamente:
+{
+  "idclient": 10,
+  "datetime": "2026-06-10T12:00:00.000Z",
+  "inspector": "Maria Vistoriadora",
+  "mobuss": false,
+  "obs": "Observação opcional"
+}
+
+O backend identifica o empreendimento pelo cliente (idclient -> tb_clients.identerprise), extrai data/hora no fuso America/Sao_Paulo e consulta tb_inspection_blocks. Se houver bloqueio, retorna erro:
+"Horario bloqueado para este empreendimento"
+
+PUT /inspections/:id:
+- Se datetime for alterado, o backend faz a mesma verificação de bloqueio.
+- Não existe mais idslot na criação, atualização ou resposta esperada.
+
+O front deve:
+- Mostrar agenda/calendário diretamente por vistorias e bloqueios.
+- Para impedir seleção de horários bloqueados, carregar GET /blocks no intervalo visível do calendário.
+- Ao agendar, ainda tratar erro de backend porque outra pessoa pode criar um bloqueio depois que a tela carregou.
+- Não enviar nem esperar idslot.
+- Trocar qualquer tela/label de "slots" para "bloqueios" ou "indisponibilidade".
+
+Base local para testes:
+- API: http://127.0.0.1:3001
+- Swagger: http://127.0.0.1:3001/docs
+- Front local liberado no CORS: http://localhost:3010
