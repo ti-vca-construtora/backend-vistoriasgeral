@@ -59,7 +59,8 @@ export class TimelineService {
     // 3. Buscar vistorias e suas recusas
     const { data: inspections } = await supabase
       .from('tb_inspections')
-      .select(`
+      .select(
+        `
         id,
         datetime,
         inspector,
@@ -76,7 +77,8 @@ export class TimelineService {
           updated_at,
           obs
         )
-      `)
+      `,
+      )
       .eq('idclient', clientId)
       .order('datetime', { ascending: true });
 
@@ -135,13 +137,18 @@ export class TimelineService {
           }
         }
         // Se vistoria foi aprovada → INSPECTION_APPROVED
-        else if (inspection.status === 'APROVADA' && inspection.updated_at) {
+        else if (
+          inspection.status === 'ACEITE' ||
+          inspection.status === 'APROVADA'
+        ) {
           events.push({
             type: TimelineEventType.INSPECTION_APPROVED,
-            date: inspection.updated_at,
-            description: 'Vistoria aprovada',
+            date: inspection.updated_at ?? inspection.datetime,
+            description: 'Vistoria aceita',
             metadata: {
               inspectionId: inspection.id,
+              datetime: inspection.datetime,
+              status: inspection.status,
               inspector: inspection.inspector,
               obs: inspection.obs,
             },

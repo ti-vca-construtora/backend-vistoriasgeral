@@ -1,5 +1,6 @@
 import { IsNotEmpty, IsString, IsNumber, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 
 export class CreateClientDto {
   @ApiProperty({
@@ -32,6 +33,9 @@ export class CreateClientDto {
     required: false,
   })
   @IsOptional()
+  @Transform(({ value }) =>
+    value === null || value === undefined ? value : String(value),
+  )
   @IsString()
   phone?: string;
 

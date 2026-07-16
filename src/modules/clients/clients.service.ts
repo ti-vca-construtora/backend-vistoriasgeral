@@ -3,6 +3,7 @@ import { AuthUser, isAdmin } from '../../infra/auth/auth-user';
 import { SupabaseService } from '../../infra/supabase/supabase.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
+import { isValidBrazilPhone, normalizeBrazilPhone } from './phone.util';
 
 @Injectable()
 export class ClientsService {
@@ -57,12 +58,13 @@ export class ClientsService {
   }
 
   async create(dto: CreateClientDto) {
+    const clientPayload = this.normalizeClientPhone(dto);
     const { data: exists } = await this.supabase.getAdmin()
       .from('tb_clients')
       .select('id')
-      .eq('name', dto.name)
-      .eq('unit', dto.unit)
-      .eq('identerprise', dto.identerprise)
+      .eq('name', clientPayload.name)
+      .eq('unit', clientPayload.unit)
+      .eq('identerprise', clientPayload.identerprise)
       .maybeSingle();
 
     if (exists) {
@@ -73,7 +75,7 @@ export class ClientsService {
 
     const { data, error } = await this.supabase.getAdmin()
       .from('tb_clients')
-      .insert(dto)
+      .insert(clientPayload)
       .select()
       .single();
 
@@ -119,9 +121,11 @@ export class ClientsService {
       throw new NotFoundException('Cliente não encontrado');
     }
 
-    const name = dto.name ?? current.name;
-    const unit = dto.unit ?? current.unit;
-    const identerprise = dto.identerprise ?? current.identerprise;
+    const clientPayload = this.normalizeClientPhone(dto);
+    const name = clientPayload.name ?? current.name;
+    const unit = clientPayload.unit ?? current.unit;
+    const identerprise =
+      clientPayload.identerprise ?? current.identerprise;
 
     const { data: duplicate } = await this.supabase.getAdmin()
       .from('tb_clients')
@@ -140,7 +144,7 @@ export class ClientsService {
 
     const { data, error } = await this.supabase.getAdmin()
       .from('tb_clients')
-      .update(dto)
+      .update(clientPayload)
       .eq('id', id)
       .select()
       .single();
@@ -176,7 +180,12 @@ export class ClientsService {
 
   async bulkCreate(clients: CreateClientDto[]) {
     const admin = this.supabase.getAdmin();
-    const enterpriseIds = [...new Set(clients.map(c => c.identerprise))];
+    const normalizedClients = clients.map((client) =>
+      this.normalizeClientPhone(client),
+    );
+    const enterpriseIds = [
+      ...new Set(normalizedClients.map((client) => client.identerprise)),
+    ];
 
     const { data: existing } = await admin
       .from('tb_clients')
@@ -191,7 +200,7 @@ export class ClientsService {
     const skippedDetails: { name: string; unit: string; reason: string }[] = [];
     const seenInBatch = new Set<string>();
 
-    for (const client of clients) {
+    for (const client of normalizedClients) {
       const key = `${client.name}|${client.unit}|${client.identerprise}`;
 
       if (existingSet.has(key)) {
@@ -250,10 +259,21 @@ export class ClientsService {
     }
 
     return {
-      total: clients.length,
+      total: normalizedClients.length,
       inserted: insertedClients.length,
       skipped: skippedDetails.length,
       skippedDetails,
     };
+  }
+
+  private normalizeClientPhone<T extends { phone?: unknown }>(client: T): T {
+    const phone = normalizeBrazilPhone(client.phone);
+    if (!isValidBrazilPhone(phone)) {
+      throw new BadRequestException(
+        'Telefone invalido. Informe DDD + numero, com ou sem o codigo 55.',
+      );
+    }
+
+    return { ...client, phone };
   }
 }

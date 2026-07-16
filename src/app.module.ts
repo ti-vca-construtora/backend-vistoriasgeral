@@ -10,6 +10,7 @@ import { RejectionsModule } from './modules/rejections/rejections.module';
 import { EligibleModule } from './modules/eligible/eligible.module';
 import { TimelineModule } from './modules/timeline/timeline.module';
 import { BlocksModule } from './modules/blocks/blocks.module';
+import { SatisfactionModule } from './modules/satisfaction/satisfaction.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { BlocksModule } from './modules/blocks/blocks.module';
     EligibleModule,
     TimelineModule,
     BlocksModule,
+    SatisfactionModule,
   ],
 })
 export class AppModule {}
