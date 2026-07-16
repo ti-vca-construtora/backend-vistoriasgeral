@@ -23,65 +23,85 @@ export class OverviewService {
 
   async findAll(query: FindOverviewQuery, user: AuthUser) {
     // 1) Busca overviews (LEFT: pode não existir)
-    let q = this.admin
-      .from('tb_general')
-      .select(`
-        id,
-        idclient,
-        data_register,
-        data_contact,
-        status,
-        status_quality,
-        status_construction,
-        status_delivery,
-        obs,
-        situation,
-        created_at,
-        updated_at
-      `);
-
-    if (query.id) q = q.eq('id', query.id);
+    // Filtros .in() com muitos ids viram query string no PostgREST e estouram
+    // o limite de tamanho da URI ("URI too long"), então buscamos em lotes.
+    let allowedClientIds: number[] | null = null;
     if (query.idclient) {
       await this.assertClientAccess(query.idclient, user);
-      q = q.eq('idclient', query.idclient);
     } else if (!isAdmin(user)) {
       if (user.enterpriseIds.length === 0) return [];
-      const allowedClientIds = await this.findAllowedClientIds(user);
+      allowedClientIds = await this.findAllowedClientIds(user);
       if (allowedClientIds.length === 0) return [];
-      q = q.in('idclient', allowedClientIds);
     }
-    if (query.status) q = q.eq('status', query.status);
-    if (query.situation) q = q.eq('situation', query.situation);
 
-    const { data: generals, error } = await q;
-    if (error) throw new BadRequestException(error.message);
-
-    // Coleção de idclients para buscar vistorias
-    const idclients = (generals ?? []).map(g => g.idclient);
-
-    // 2) Busca vistorias + recusas
-    const { data: inspections, error: inspErr } = await this.admin
-      .from('tb_inspections')
-      .select(`
-        id,
-        datetime,
-        inspector,
-        mobuss,
-        status,
-        created_at,
-        updated_at,
-        idclient,
-        tb_rejections (
+    const buildGeneralsQuery = (clientIds?: number[]) => {
+      let q = this.admin
+        .from('tb_general')
+        .select(`
           id,
+          idclient,
+          data_register,
+          data_contact,
           status,
-          prevision_date,
+          status_quality,
+          status_construction,
+          status_delivery,
+          obs,
+          situation,
           created_at,
           updated_at
-        )
-      `)
-      .in('idclient', idclients.length ? idclients : [0]);
+        `);
 
-    if (inspErr) throw new BadRequestException(inspErr.message);
+      if (query.id) q = q.eq('id', query.id);
+      if (query.idclient) q = q.eq('idclient', query.idclient);
+      if (clientIds) q = q.in('idclient', clientIds);
+      if (query.status) q = q.eq('status', query.status);
+      if (query.situation) q = q.eq('situation', query.situation);
+      return q;
+    };
+
+    const generalsResults = await Promise.all(
+      allowedClientIds
+        ? this.chunk(allowedClientIds).map(ids => buildGeneralsQuery(ids))
+        : [buildGeneralsQuery()],
+    );
+    const generals = generalsResults.flatMap(({ data, error }) => {
+      if (error) throw new BadRequestException(error.message);
+      return data ?? [];
+    });
+
+    // Coleção de idclients para buscar vistorias
+    const idclients = generals.map(g => g.idclient);
+
+    // 2) Busca vistorias + recusas (em lotes, pelo mesmo motivo acima)
+    const inspectionsResults = await Promise.all(
+      this.chunk(idclients).map(ids =>
+        this.admin
+          .from('tb_inspections')
+          .select(`
+            id,
+            datetime,
+            inspector,
+            mobuss,
+            status,
+            created_at,
+            updated_at,
+            idclient,
+            tb_rejections (
+              id,
+              status,
+              prevision_date,
+              created_at,
+              updated_at
+            )
+          `)
+          .in('idclient', ids),
+      ),
+    );
+    const inspections = inspectionsResults.flatMap(({ data, error }) => {
+      if (error) throw new BadRequestException(error.message);
+      return data ?? [];
+    });
 
     // 3) Agrupa vistorias por idclient
     const inspByClient = new Map<number, any[]>();
@@ -286,6 +306,13 @@ export class OverviewService {
     }
 
     return { success: true };
+  }
+
+  // Divide listas de ids em lotes para filtros .in(), evitando "URI too long" no PostgREST
+  private chunk<T>(items: T[], size = 200): T[][] {
+    const out: T[][] = [];
+    for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+    return out;
   }
 
   private async findAllowedClientIds(user: AuthUser) {

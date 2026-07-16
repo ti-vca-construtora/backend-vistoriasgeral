@@ -62,18 +62,22 @@ export class EligibleService {
 
     const clientIds = generalRecords.map(g => g.idclient);
 
-    // 2) Buscar quais desses clientes JÁ TEM vistoria
-    const { data: inspections, error: inspError } = await this.admin
-      .from('tb_inspections')
-      .select('idclient')
-      .in('idclient', clientIds);
-
-    if (inspError) {
-      throw new BadRequestException(inspError.message);
-    }
+    // 2) Buscar quais desses clientes JÁ TEM vistoria (em lotes, para não estourar a URI do PostgREST)
+    const inspectionsResults = await Promise.all(
+      this.chunk(clientIds).map(ids =>
+        this.admin
+          .from('tb_inspections')
+          .select('idclient')
+          .in('idclient', ids),
+      ),
+    );
+    const inspections = inspectionsResults.flatMap(({ data, error }) => {
+      if (error) throw new BadRequestException(error.message);
+      return data ?? [];
+    });
 
     const clientsWithInspections = new Set(
-      (inspections || []).map(i => i.idclient)
+      inspections.map(i => i.idclient)
     );
 
     // 3) Filtrar apenas clientes SEM vistoria
@@ -86,26 +90,10 @@ export class EligibleService {
     }
 
     // 4) Buscar dados completos dos clientes elegíveis
-    const { data: clients, error: clientsError } = await this.admin
-      .from('tb_clients')
-      .select(`
-        id,
-        name,
-        unit,
-        seller,
-        identerprise,
-        created_at,
-        updated_at,
-        nameenterprise:tb_enterprises!inner(name)
-      `)
-      .in('id', eligibleClientIds);
-
-    if (clientsError) {
-      throw new BadRequestException(clientsError.message);
-    }
+    const clients = await this.fetchClientsByIds(eligibleClientIds);
 
     // 5) Formatar resposta
-    return (clients || []).map(client => {
+    return clients.map(client => {
       const enterpriseName = Array.isArray(client.nameenterprise)
         ? client.nameenterprise[0]?.name ?? null
         : (client.nameenterprise as any)?.name ?? null;
@@ -209,23 +197,7 @@ export class EligibleService {
     const clientIds = eligibleData.map(e => e.idclient);
 
     // 3) Buscar dados completos dos clientes
-    const { data: clients, error: clientsError } = await this.admin
-      .from('tb_clients')
-      .select(`
-        id,
-        name,
-        unit,
-        seller,
-        identerprise,
-        created_at,
-        updated_at,
-        nameenterprise:tb_enterprises!inner(name)
-      `)
-      .in('id', clientIds);
-
-    if (clientsError) {
-      throw new BadRequestException(clientsError.message);
-    }
+    const clients = await this.fetchClientsByIds(clientIds);
 
     // 4) Mapear com idrejection
     const clientMap = new Map(
@@ -233,7 +205,7 @@ export class EligibleService {
     );
 
     // 5) Formatar resposta
-    return (clients || []).map(client => {
+    return clients.map(client => {
       const enterpriseName = Array.isArray(client.nameenterprise)
         ? client.nameenterprise[0]?.name ?? null
         : (client.nameenterprise as any)?.name ?? null;
@@ -314,26 +286,10 @@ export class EligibleService {
     }
 
     // 3) Buscar dados completos dos clientes
-    const { data: clients, error: clientsError } = await this.admin
-      .from('tb_clients')
-      .select(`
-        id,
-        name,
-        unit,
-        seller,
-        identerprise,
-        created_at,
-        updated_at,
-        nameenterprise:tb_enterprises!inner(name)
-      `)
-      .in('id', eligibleClientIds);
-
-    if (clientsError) {
-      throw new BadRequestException(clientsError.message);
-    }
+    const clients = await this.fetchClientsByIds(eligibleClientIds);
 
     // 4) Formatar resposta
-    return (clients || []).map(client => {
+    return clients.map(client => {
       const enterpriseName = Array.isArray(client.nameenterprise)
         ? client.nameenterprise[0]?.name ?? null
         : (client.nameenterprise as any)?.name ?? null;
@@ -351,6 +307,38 @@ export class EligibleService {
         created_at: client.created_at,
         updated_at: client.updated_at,
       };
+    });
+  }
+
+  // Divide listas de ids em lotes para filtros .in(), evitando "URI too long" no PostgREST
+  private chunk<T>(items: T[], size = 200): T[][] {
+    const out: T[][] = [];
+    for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+    return out;
+  }
+
+  // Busca dados completos de clientes por ids, em lotes
+  private async fetchClientsByIds(clientIds: number[]) {
+    const results = await Promise.all(
+      this.chunk(clientIds).map(ids =>
+        this.admin
+          .from('tb_clients')
+          .select(`
+            id,
+            name,
+            unit,
+            seller,
+            identerprise,
+            created_at,
+            updated_at,
+            nameenterprise:tb_enterprises!inner(name)
+          `)
+          .in('id', ids),
+      ),
+    );
+    return results.flatMap(({ data, error }) => {
+      if (error) throw new BadRequestException(error.message);
+      return data ?? [];
     });
   }
 }
