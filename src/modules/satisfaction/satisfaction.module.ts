@@ -11,6 +11,6 @@ import { SatisfactionWorker } from './satisfaction.worker';
   imports: [ConfigModule, SupabaseModule],
   controllers: [PublicSatisfactionController, SatisfactionController],
   providers: [SatisfactionService, HuggyClient, SatisfactionWorker],
-  exports: [SatisfactionService],
+  exports: [SatisfactionService, HuggyClient],
 })
 export class SatisfactionModule {}

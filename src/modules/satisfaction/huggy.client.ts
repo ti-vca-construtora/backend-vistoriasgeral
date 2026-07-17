@@ -20,6 +20,14 @@ type SendSurveyMessage = {
   surveyUrl: string;
 };
 
+type SendInspectionReminderMessage = {
+  clientName: string;
+  unit: string;
+  phone: string;
+  inspectionDate: string;
+  inspectionTime: string;
+};
+
 @Injectable()
 export class HuggyClient {
   constructor(private readonly config: ConfigService) {}
@@ -73,6 +81,39 @@ export class HuggyClient {
     return {
       contactId: String(contact.id),
       chatId: String(chat.id),
+      messageId: sentMessage?.id ? String(sentMessage.id) : null,
+    };
+  }
+
+  async sendInspectionReminder(message: SendInspectionReminderMessage) {
+    const phone = this.normalizeBrazilPhone(message.phone);
+    const contact = await this.findOrCreateContact(phone, message.clientName);
+    const chat = await this.findOrCreateChat(String(contact.id));
+    const templateId = this.configuredTemplateId(
+      'HUGGY_INSPECTION_REMINDER_TEMPLATE_ID',
+    );
+    const params = {
+      '1': message.clientName,
+      '2': message.unit,
+      '3': message.inspectionDate,
+      '4': message.inspectionTime,
+    };
+
+    const sentMessage = await this.request<any>(`/chats/${chat.id}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({
+        hsm: {
+          template_id: templateId,
+          params,
+        },
+      }),
+    });
+    this.assertMessageAccepted(sentMessage);
+
+    return {
+      contactId: String(contact.id),
+      chatId: String(chat.id),
+      messageId: sentMessage?.id ? String(sentMessage.id) : null,
     };
   }
 
@@ -163,6 +204,10 @@ export class HuggyClient {
       kind === 'INITIAL'
         ? 'HUGGY_INITIAL_TEMPLATE_ID'
         : 'HUGGY_REMINDER_TEMPLATE_ID';
+    return this.configuredTemplateId(key);
+  }
+
+  private configuredTemplateId(key: string) {
     const value = Number(this.requiredConfig(key));
     if (!Number.isInteger(value) || value <= 0) {
       throw new HuggyRequestError(

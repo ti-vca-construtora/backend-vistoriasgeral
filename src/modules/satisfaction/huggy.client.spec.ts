@@ -18,6 +18,7 @@ function createClient(dynamicButtonsEnabled = false) {
     HUGGY_CHANNEL_UUID: CHANNEL_UUID,
     HUGGY_INITIAL_TEMPLATE_ID: '100555',
     HUGGY_REMINDER_TEMPLATE_ID: '100556',
+    HUGGY_INSPECTION_REMINDER_TEMPLATE_ID: '100607',
     HUGGY_DYNAMIC_BUTTONS_ENABLED: String(dynamicButtonsEnabled),
   };
   const config = {
@@ -166,5 +167,47 @@ describe('HuggyClient', () => {
     expect(rawBody.indexOf('"1"')).toBeLessThan(rawBody.indexOf('"2"'));
     expect(rawBody.indexOf('"2"')).toBeLessThan(rawBody.indexOf('"3"'));
     expect(rawBody.indexOf('"3"')).toBeLessThan(rawBody.indexOf('"4"'));
+  });
+
+  it('sends the scheduled inspection reminder with ordered variables', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(response([{ id: 60424026 }]))
+      .mockResolvedValueOnce(
+        response([
+          {
+            id: 777,
+            situation: 'auto',
+            closedAt: null,
+            channels: [{ uuid: CHANNEL_UUID }],
+          },
+        ]),
+      )
+      .mockResolvedValueOnce(response({ id: 9924140790 }));
+
+    const result = await createClient().sendInspectionReminder({
+      clientName: 'Silas Pires',
+      unit: 'QD04 - CASA 04',
+      phone: '77981243447',
+      inspectionDate: '18/07/2026',
+      inspectionTime: '10:00',
+    });
+
+    const rawBody = String(fetchMock.mock.calls[2][1]?.body);
+    expect(JSON.parse(rawBody)).toEqual({
+      hsm: {
+        template_id: 100607,
+        params: {
+          '1': 'Silas Pires',
+          '2': 'QD04 - CASA 04',
+          '3': '18/07/2026',
+          '4': '10:00',
+        },
+      },
+    });
+    expect(rawBody.indexOf('"1"')).toBeLessThan(rawBody.indexOf('"2"'));
+    expect(rawBody.indexOf('"2"')).toBeLessThan(rawBody.indexOf('"3"'));
+    expect(rawBody.indexOf('"3"')).toBeLessThan(rawBody.indexOf('"4"'));
+    expect(result.messageId).toBe('9924140790');
   });
 });
