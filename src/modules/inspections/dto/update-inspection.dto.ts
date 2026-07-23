@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsDateString } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, IsDateString } from 'class-validator';
 
 export class UpdateInspectionDto {
   @ApiPropertyOptional({
@@ -31,4 +31,13 @@ export class UpdateInspectionDto {
   @ApiPropertyOptional({ example: true })
   @IsOptional()
   mobuss?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'Quando a vistoria for cancelada, contabiliza o cancelamento também como recusa',
+    example: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  counts_as_rejection?: boolean;
 }

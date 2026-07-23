@@ -23,9 +23,11 @@ type SendSurveyMessage = {
 type SendInspectionReminderMessage = {
   clientName: string;
   unit: string;
+  enterpriseName: string;
   phone: string;
   inspectionDate: string;
   inspectionTime: string;
+  orientationPath: string;
 };
 
 @Injectable()
@@ -95,8 +97,9 @@ export class HuggyClient {
     const params = {
       '1': message.clientName,
       '2': message.unit,
-      '3': message.inspectionDate,
-      '4': message.inspectionTime,
+      '3': message.enterpriseName,
+      '4': message.inspectionDate,
+      '5': message.inspectionTime,
     };
 
     const sentMessage = await this.request<any>(`/chats/${chat.id}/messages`, {
@@ -105,6 +108,14 @@ export class HuggyClient {
         hsm: {
           template_id: templateId,
           params,
+          buttons: {
+            params: [
+              {
+                type: 'text',
+                text: message.orientationPath,
+              },
+            ],
+          },
         },
       }),
     });

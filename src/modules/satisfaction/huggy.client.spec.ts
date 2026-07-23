@@ -188,9 +188,11 @@ describe('HuggyClient', () => {
     const result = await createClient().sendInspectionReminder({
       clientName: 'Silas Pires',
       unit: 'QD04 - CASA 04',
+      enterpriseName: 'VCA Verso',
       phone: '77981243447',
       inspectionDate: '18/07/2026',
       inspectionTime: '10:00',
+      orientationPath: 'orientacoes/abc-123',
     });
 
     const rawBody = String(fetchMock.mock.calls[2][1]?.body);
@@ -200,14 +202,24 @@ describe('HuggyClient', () => {
         params: {
           '1': 'Silas Pires',
           '2': 'QD04 - CASA 04',
-          '3': '18/07/2026',
-          '4': '10:00',
+          '3': 'VCA Verso',
+          '4': '18/07/2026',
+          '5': '10:00',
+        },
+        buttons: {
+          params: [
+            {
+              type: 'text',
+              text: 'orientacoes/abc-123',
+            },
+          ],
         },
       },
     });
     expect(rawBody.indexOf('"1"')).toBeLessThan(rawBody.indexOf('"2"'));
     expect(rawBody.indexOf('"2"')).toBeLessThan(rawBody.indexOf('"3"'));
     expect(rawBody.indexOf('"3"')).toBeLessThan(rawBody.indexOf('"4"'));
+    expect(rawBody.indexOf('"4"')).toBeLessThan(rawBody.indexOf('"5"'));
     expect(result.messageId).toBe('9924140790');
   });
 });

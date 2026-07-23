@@ -1,6 +1,7 @@
 export enum UserRole {
   ADMIN = 'ADMIN',
   USER = 'USER',
+  INSPECTOR = 'INSPECTOR',
   VIEWER = 'VIEWER',
 }
 
@@ -19,4 +20,3 @@ export type AuthUser = {
 };
 
 export const isAdmin = (user: AuthUser) => user.role === UserRole.ADMIN;
-

@@ -10,7 +10,7 @@ import { SatisfactionWorker } from './satisfaction.worker';
 @Module({
   imports: [ConfigModule, SupabaseModule],
   controllers: [PublicSatisfactionController, SatisfactionController],
-  providers: [SatisfactionService, HuggyClient, SatisfactionWorker],
+  providers: [SatisfactionWorker, SatisfactionService, HuggyClient],
   exports: [SatisfactionService, HuggyClient],
 })
 export class SatisfactionModule {}

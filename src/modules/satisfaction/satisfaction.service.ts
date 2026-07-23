@@ -11,6 +11,7 @@ import { SupabaseService } from '../../infra/supabase/supabase.service';
 import { QuerySatisfactionDto } from './dto/query-satisfaction.dto';
 import { SubmitSatisfactionResponseDto } from './dto/submit-satisfaction-response.dto';
 import { calculateSatisfactionMetrics } from './satisfaction-metrics';
+import { SatisfactionWorker } from './satisfaction.worker';
 
 const SURVEY_SELECT = `
   *,
@@ -50,6 +51,7 @@ export class SatisfactionService {
   constructor(
     private readonly supabaseService: SupabaseService,
     private readonly config: ConfigService,
+    private readonly worker: SatisfactionWorker,
   ) {}
 
   private get admin() {
@@ -66,6 +68,8 @@ export class SatisfactionService {
         tb_inspections!inner (
           datetime,
           tb_clients!inner (
+            name,
+            unit,
             tb_enterprises (name)
           )
         )
@@ -85,6 +89,8 @@ export class SatisfactionService {
       status: data.status,
       inspectionDate: inspection?.datetime ?? null,
       enterpriseName: enterprise?.name ?? null,
+      clientName: client?.name ?? null,
+      unit: client?.unit ?? null,
     };
   }
 
@@ -170,6 +176,57 @@ export class SatisfactionService {
     if (!data)
       throw new NotFoundException('Pesquisa da vistoria nao encontrada');
     return this.mapSurvey(data);
+  }
+
+  async ensureForInspection(idinspection: number, user: AuthUser) {
+    await this.assertInspectionAccess(idinspection, user);
+
+    const { error: insertError } = await this.admin
+      .from('tb_satisfaction_surveys')
+      .upsert(
+        { idinspection },
+        { onConflict: 'idinspection', ignoreDuplicates: true },
+      );
+
+    if (insertError) throw new BadRequestException(insertError.message);
+    return this.getByInspection(idinspection, user);
+  }
+
+  async sendNotificationManually(id: number, user: AuthUser) {
+    const survey = await this.findAccessibleSurvey(id, user);
+    if (survey.status === 'ANSWERED') {
+      throw new BadRequestException('Pesquisa ja respondida');
+    }
+
+    const client = this.unwrap(this.unwrap(survey.tb_inspections)?.tb_clients);
+    if (!String(client?.phone ?? '').trim()) {
+      throw new BadRequestException(
+        'Cliente sem telefone cadastrado para o WhatsApp',
+      );
+    }
+
+    const now = new Date().toISOString();
+    const { data, error } = await this.admin
+      .from('tb_satisfaction_notifications')
+      .upsert(
+        {
+          idsurvey: survey.id,
+          kind: 'INITIAL',
+          status: 'PENDING',
+          attempts: 0,
+          next_attempt_at: now,
+          sent_at: null,
+          last_error: null,
+          updated_at: now,
+        },
+        { onConflict: 'idsurvey,kind' },
+      )
+      .select()
+      .single();
+
+    if (error) throw new BadRequestException(error.message);
+    setTimeout(() => void this.worker.processDue(), 0).unref();
+    return data;
   }
 
   async retryNotification(id: number, user: AuthUser) {
@@ -295,6 +352,24 @@ export class SatisfactionService {
     return data as any;
   }
 
+  private async assertInspectionAccess(idinspection: number, user: AuthUser) {
+    let query = this.admin
+      .from('tb_inspections')
+      .select('id, tb_clients!inner(identerprise)')
+      .eq('id', idinspection);
+
+    if (!isAdmin(user)) {
+      if (user.enterpriseIds.length === 0) {
+        throw new ForbiddenException('Usuario sem acesso ao empreendimento');
+      }
+      query = query.in('tb_clients.identerprise', user.enterpriseIds);
+    }
+
+    const { data, error } = await query.maybeSingle();
+    if (error) throw new BadRequestException(error.message);
+    if (!data) throw new NotFoundException('Vistoria nao encontrada');
+  }
+
   private mapSurvey(row: any) {
     const inspection = this.unwrap(row.tb_inspections);
     const client = this.unwrap(inspection?.tb_clients);
@@ -343,7 +418,7 @@ export class SatisfactionService {
         status: inspection?.status ?? null,
       },
       notifications,
-      delivery_status: deliveryNotification?.status ?? 'PENDING',
+      delivery_status: deliveryNotification?.status ?? 'NOT_SENT',
       delivery_error: deliveryNotification?.last_error ?? null,
     };
   }

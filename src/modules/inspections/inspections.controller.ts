@@ -1,10 +1,21 @@
 import {
-  Controller, Get, Post, Put, Delete,
-  Body, Param, Query, UseGuards
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
-  ApiBearerAuth, ApiOperation, ApiQuery,
-  ApiResponse, ApiTags, ApiBody
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+  ApiBody,
 } from '@nestjs/swagger';
 import { SupabaseAuthGuard } from '../../infra/auth/supabase-auth.guard';
 import { UserRole } from '../../infra/auth/auth-user';
@@ -33,8 +44,18 @@ export class InspectionsController {
   @ApiQuery({ name: 'mobuss', required: false, type: Boolean })
   @ApiQuery({ name: 'status', required: false, type: String })
   @ApiQuery({ name: 'idprerejection', required: false, type: Number })
-  @ApiQuery({ name: 'from', required: false, type: String, description: 'Data inicial (yyyy-mm-dd)' })
-  @ApiQuery({ name: 'to', required: false, type: String, description: 'Data final (yyyy-mm-dd)' })
+  @ApiQuery({
+    name: 'from',
+    required: false,
+    type: String,
+    description: 'Data inicial (yyyy-mm-dd)',
+  })
+  @ApiQuery({
+    name: 'to',
+    required: false,
+    type: String,
+    description: 'Data final (yyyy-mm-dd)',
+  })
   @ApiResponse({ status: 200, type: [InspectionResponseDto] })
   @Get()
   findAll(@Query() query: QueryInspectionDto, @CurrentUser() user: AuthUser) {
@@ -55,7 +76,7 @@ export class InspectionsController {
   @ApiOperation({ summary: 'Atualizar vistoria' })
   @ApiBody({ type: UpdateInspectionDto })
   @ApiResponse({ status: 200, type: InspectionResponseDto })
-  @Roles(UserRole.ADMIN, UserRole.USER)
+  @Roles(UserRole.ADMIN, UserRole.USER, UserRole.INSPECTOR)
   @Put(':id')
   update(
     @Param('id') id: number,

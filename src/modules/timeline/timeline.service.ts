@@ -83,6 +83,18 @@ export class TimelineService {
       .order('datetime', { ascending: true });
 
     if (inspections && inspections.length > 0) {
+      const inspectionIds = inspections.map((inspection) => inspection.id);
+      const { data: auditEvents } = await supabase
+        .from('tb_inspection_events')
+        .select('*')
+        .in('idinspection', inspectionIds)
+        .order('created_at', { ascending: true });
+      const auditedStatuses = new Set(
+        (auditEvents ?? [])
+          .filter((event: any) => event.event_type === 'STATUS_CHANGED')
+          .map((event: any) => `${event.idinspection}:${event.new_status}`),
+      );
+
       for (const inspection of inspections) {
         // Evento de agendamento da vistoria
         events.push({
@@ -100,7 +112,11 @@ export class TimelineService {
         const rejections = (inspection as any).tb_rejections ?? [];
 
         // Se vistoria foi recusada → evento único INSPECTION_REJECTED
-        if (inspection.status === 'RECUSA' && rejections.length > 0) {
+        if (
+          ['RECUSA', 'RECUSA_EM_ABERTO'].includes(inspection.status) &&
+          rejections.length > 0 &&
+          !auditedStatuses.has(`${inspection.id}:${inspection.status}`)
+        ) {
           const rejection = rejections[0]; // recusa principal
           events.push({
             type: TimelineEventType.INSPECTION_REJECTED,
@@ -141,19 +157,43 @@ export class TimelineService {
           inspection.status === 'ACEITE' ||
           inspection.status === 'APROVADA'
         ) {
+          if (!auditedStatuses.has(`${inspection.id}:${inspection.status}`)) {
+            events.push({
+              type: TimelineEventType.INSPECTION_APPROVED,
+              date: inspection.updated_at ?? inspection.datetime,
+              description: 'Vistoria aceita',
+              metadata: {
+                inspectionId: inspection.id,
+                datetime: inspection.datetime,
+                status: inspection.status,
+                inspector: inspection.inspector,
+                obs: inspection.obs,
+              },
+            });
+          }
+        } else if (
+          inspection.status === 'CANCELADA' &&
+          !auditedStatuses.has(`${inspection.id}:CANCELADA`)
+        ) {
           events.push({
-            type: TimelineEventType.INSPECTION_APPROVED,
+            type: TimelineEventType.INSPECTION_CANCELLED,
             date: inspection.updated_at ?? inspection.datetime,
-            description: 'Vistoria aceita',
+            description: 'Vistoria cancelada',
             metadata: {
               inspectionId: inspection.id,
               datetime: inspection.datetime,
-              status: inspection.status,
               inspector: inspection.inspector,
               obs: inspection.obs,
             },
           });
         }
+      }
+
+      for (const event of auditEvents ?? []) {
+        if (event.event_type === 'SCHEDULED') continue;
+
+        const mapped = this.mapInspectionAuditEvent(event);
+        if (mapped) events.push(mapped);
       }
     }
 
@@ -167,6 +207,76 @@ export class TimelineService {
       clientName: client.name,
       unit: client.unit,
       events,
+    };
+  }
+
+  private mapInspectionAuditEvent(event: any): TimelineEventDto | null {
+    const metadata = {
+      inspectionId: event.idinspection,
+      previousStatus: event.previous_status,
+      status: event.new_status,
+      previousDatetime: event.previous_datetime,
+      datetime: event.new_datetime,
+      inspector: event.inspector,
+      obs: event.obs,
+      countsAsRejection: event.counts_as_rejection,
+      ...(event.metadata ?? {}),
+    };
+
+    if (event.event_type === 'RESCHEDULED') {
+      return {
+        type: TimelineEventType.INSPECTION_RESCHEDULED,
+        date: event.created_at,
+        description: 'Vistoria reagendada',
+        metadata,
+      };
+    }
+
+    if (event.event_type === 'UPDATED') {
+      return {
+        type: TimelineEventType.INSPECTION_UPDATED,
+        date: event.created_at,
+        description: 'Dados da vistoria atualizados',
+        metadata,
+      };
+    }
+
+    if (event.event_type !== 'STATUS_CHANGED') return null;
+    if (event.new_status === 'ACEITE' || event.new_status === 'APROVADA') {
+      return {
+        type: TimelineEventType.INSPECTION_APPROVED,
+        date: event.created_at,
+        description: 'Vistoria aceita',
+        metadata,
+      };
+    }
+    if (['RECUSA', 'RECUSA_EM_ABERTO'].includes(event.new_status)) {
+      return {
+        type: TimelineEventType.INSPECTION_REJECTED,
+        date: event.created_at,
+        description:
+          event.new_status === 'RECUSA_EM_ABERTO'
+            ? 'Vistoria com recusa em aberto'
+            : 'Vistoria recusada',
+        metadata,
+      };
+    }
+    if (event.new_status === 'CANCELADA') {
+      return {
+        type: TimelineEventType.INSPECTION_CANCELLED,
+        date: event.created_at,
+        description: event.counts_as_rejection
+          ? 'Vistoria cancelada e contabilizada como recusa'
+          : 'Vistoria cancelada',
+        metadata,
+      };
+    }
+
+    return {
+      type: TimelineEventType.INSPECTION_STATUS_CHANGED,
+      date: event.created_at,
+      description: `Status da vistoria alterado para ${event.new_status}`,
+      metadata,
     };
   }
 }

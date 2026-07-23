@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { AuthUser, isAdmin } from '../../infra/auth/auth-user';
 import { SupabaseService } from '../../infra/supabase/supabase.service';
 import { CreateOverviewDto } from './dto/create-overview.dto';
@@ -14,7 +19,6 @@ type FindOverviewQuery = {
 
 @Injectable()
 export class OverviewService {
-
   constructor(private readonly supabaseService: SupabaseService) {}
 
   private get admin() {
@@ -35,9 +39,7 @@ export class OverviewService {
     }
 
     const buildGeneralsQuery = (clientIds?: number[]) => {
-      let q = this.admin
-        .from('tb_general')
-        .select(`
+      let q = this.admin.from('tb_general').select(`
           id,
           idclient,
           data_register,
@@ -62,7 +64,7 @@ export class OverviewService {
 
     const generalsResults = await Promise.all(
       allowedClientIds
-        ? this.chunk(allowedClientIds).map(ids => buildGeneralsQuery(ids))
+        ? this.chunk(allowedClientIds).map((ids) => buildGeneralsQuery(ids))
         : [buildGeneralsQuery()],
     );
     const generals = generalsResults.flatMap(({ data, error }) => {
@@ -71,14 +73,15 @@ export class OverviewService {
     });
 
     // Coleção de idclients para buscar vistorias
-    const idclients = generals.map(g => g.idclient);
+    const idclients = generals.map((g) => g.idclient);
 
     // 2) Busca vistorias + recusas (em lotes, pelo mesmo motivo acima)
     const inspectionsResults = await Promise.all(
-      this.chunk(idclients).map(ids =>
+      this.chunk(idclients).map((ids) =>
         this.admin
           .from('tb_inspections')
-          .select(`
+          .select(
+            `
             id,
             datetime,
             inspector,
@@ -94,7 +97,8 @@ export class OverviewService {
               created_at,
               updated_at
             )
-          `)
+          `,
+          )
           .in('idclient', ids),
       ),
     );
@@ -105,7 +109,7 @@ export class OverviewService {
 
     // 3) Agrupa vistorias por idclient
     const inspByClient = new Map<number, any[]>();
-    (inspections ?? []).forEach(i => {
+    (inspections ?? []).forEach((i) => {
       const list = inspByClient.get(i.idclient) ?? [];
       list.push({
         id: i.id,
@@ -121,18 +125,14 @@ export class OverviewService {
     });
 
     // 4) Monta resposta (inclui fallback virtual)
-    const rows = (generals ?? []).map(g => {
+    const rows = (generals ?? []).map((g) => {
       const inspectionsList = inspByClient.get(g.idclient) ?? [];
 
-      // status_recente (prioridade)
-      let status_recente = 'PENDENTE';
-      const hasRecusa = inspectionsList.some(i => i.status === 'RECUSA');
-      const hasAguard = inspectionsList.some(i => i.status === 'AGUARDANDO');
-      const hasAceite = inspectionsList.some(i => i.status === 'ACEITE');
-
-      if (hasRecusa) status_recente = 'RECUSA';
-      else if (hasAguard) status_recente = 'AGUARDANDO';
-      else if (hasAceite) status_recente = 'ACEITE';
+      const latestInspection = [...inspectionsList].sort(
+        (a, b) =>
+          new Date(b.datetime).getTime() - new Date(a.datetime).getTime(),
+      )[0];
+      const status_recente = latestInspection?.status ?? 'PENDENTE';
 
       return {
         id: g.id,
@@ -216,10 +216,13 @@ export class OverviewService {
     await this.assertClientAccess(current.idclient, user);
 
     if (
-      dto.status === StatusGeneral.PENDENTE
-      && current.status === StatusGeneral.LIBERADA
+      dto.status === StatusGeneral.PENDENTE &&
+      current.status === StatusGeneral.LIBERADA
     ) {
-      const [{ data: inspections, error: inspectionError }, { data: rejections, error: rejectionError }] = await Promise.all([
+      const [
+        { data: inspections, error: inspectionError },
+        { data: rejections, error: rejectionError },
+      ] = await Promise.all([
         this.admin
           .from('tb_inspections')
           .select('id')
@@ -263,7 +266,7 @@ export class OverviewService {
   }
 
   async remove(id: number) {
-  // 1️⃣ Verifica se overview existe
+    // 1️⃣ Verifica se overview existe
     const { data: overview, error: findError } = await this.admin
       .from('tb_general')
       .select('id, idclient')
@@ -311,7 +314,8 @@ export class OverviewService {
   // Divide listas de ids em lotes para filtros .in(), evitando "URI too long" no PostgREST
   private chunk<T>(items: T[], size = 200): T[][] {
     const out: T[][] = [];
-    for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+    for (let i = 0; i < items.length; i += size)
+      out.push(items.slice(i, i + size));
     return out;
   }
 

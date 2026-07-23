@@ -9,6 +9,9 @@ class QueryMock {
   eq() {
     return this;
   }
+  in() {
+    return this;
+  }
   order() {
     return this;
   }
@@ -48,6 +51,7 @@ describe('TimelineService', () => {
         ],
         error: null,
       },
+      { data: [], error: null },
     ];
     const admin = { from: jest.fn(() => new QueryMock(results.shift())) };
     const service = new TimelineService({ getAdmin: () => admin } as any);

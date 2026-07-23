@@ -30,13 +30,13 @@ export class InspectionsService {
 
   async findAll(qry: FindQuery, user: AuthUser) {
     if (qry.from && qry.to && qry.to < qry.from) {
-      throw new BadRequestException('A data final (to) deve ser maior ou igual a data inicial (from)');
+      throw new BadRequestException(
+        'A data final (to) deve ser maior ou igual a data inicial (from)',
+      );
     }
 
-    let q = this.admin
-      .from('tb_inspections')
-      .select(
-        `
+    let q = this.admin.from('tb_inspections').select(
+      `
         *,
         tb_clients!inner (
           identerprise,
@@ -44,7 +44,7 @@ export class InspectionsService {
           unit
         )
       `,
-      );
+    );
 
     if (qry.id) q = q.eq('id', qry.id);
     if (qry.idclient) {
@@ -111,7 +111,9 @@ export class InspectionsService {
       .limit(1);
 
     if (active && active.length > 0) {
-      throw new BadRequestException('Ja existe uma vistoria ativa para este cliente');
+      throw new BadRequestException(
+        'Ja existe uma vistoria ativa para este cliente',
+      );
     }
 
     if (dto.idprerejection) {
@@ -159,8 +161,37 @@ export class InspectionsService {
     const currentClient = await this.findClient(current.idclient);
     this.assertEnterpriseAccess(currentClient.identerprise, user);
 
-    if (dto.status && dto.status !== 'RECUSA' && current.status === 'RECUSA') {
-      throw new BadRequestException('Nao e possivel mudar o status de uma vistoria marcada como RECUSA. Exclua a recusa primeiro.');
+    const rejectionStatuses = ['RECUSA', 'RECUSA_EM_ABERTO'];
+    const nextStatus = dto.status ?? current.status;
+    const nextCountsAsRejection =
+      dto.counts_as_rejection ?? current.counts_as_rejection ?? false;
+
+    if (nextStatus !== 'CANCELADA' && dto.counts_as_rejection) {
+      throw new BadRequestException(
+        'A opcao Recusa? so pode ser usada em uma vistoria cancelada',
+      );
+    }
+
+    if (
+      dto.status &&
+      !rejectionStatuses.includes(dto.status) &&
+      rejectionStatuses.includes(current.status)
+    ) {
+      throw new BadRequestException(
+        'Nao e possivel mudar o status de uma vistoria marcada como RECUSA. Exclua a recusa primeiro.',
+      );
+    }
+
+    if (
+      current.status === 'CANCELADA' &&
+      current.counts_as_rejection &&
+      (nextStatus !== 'CANCELADA' || !nextCountsAsRejection)
+    ) {
+      await this.admin
+        .from('tb_rejections')
+        .delete()
+        .eq('idinspection', id)
+        .eq('source', 'CANCELLATION');
     }
 
     if (dto.status === 'ACEITE') {
@@ -171,11 +202,13 @@ export class InspectionsService {
         .limit(1);
 
       if (rej && rej.length > 0) {
-        throw new BadRequestException('Nao e possivel aceitar vistoria com recusa existente');
+        throw new BadRequestException(
+          'Nao e possivel aceitar vistoria com recusa existente',
+        );
       }
     }
 
-    if (dto.status === 'RECUSA') {
+    if (dto.status && rejectionStatuses.includes(dto.status)) {
       const { data: exists } = await this.admin
         .from('tb_rejections')
         .select('id')
@@ -187,11 +220,35 @@ export class InspectionsService {
           idinspection: id,
           status: 'AGUARDANDO',
           construction_status: 'PENDENTE',
+          source: 'INSPECTION',
         });
       }
     }
 
-    const payload: Record<string, unknown> = { ...dto };
+    if (nextStatus === 'CANCELADA' && nextCountsAsRejection) {
+      const { data: cancellationRejection } = await this.admin
+        .from('tb_rejections')
+        .select('id')
+        .eq('idinspection', id)
+        .eq('source', 'CANCELLATION')
+        .limit(1);
+
+      if (!cancellationRejection || cancellationRejection.length === 0) {
+        await this.admin.from('tb_rejections').insert({
+          idinspection: id,
+          status: 'AGUARDANDO',
+          construction_status: 'PENDENTE',
+          source: 'CANCELLATION',
+          obs: 'Cancelamento considerado como recusa',
+        });
+      }
+    }
+
+    const payload: Record<string, unknown> = {
+      ...dto,
+      counts_as_rejection:
+        nextStatus === 'CANCELADA' ? nextCountsAsRejection : false,
+    };
 
     if (dto.datetime) {
       await this.assertNotBlocked(currentClient.identerprise, dto.datetime);
@@ -227,10 +284,15 @@ export class InspectionsService {
       .limit(1);
 
     if (hasRej && hasRej.length > 0) {
-      throw new BadRequestException('Nao e possivel deletar vistoria com recusa vinculada');
+      throw new BadRequestException(
+        'Nao e possivel deletar vistoria com recusa vinculada',
+      );
     }
 
-    const { error } = await this.admin.from('tb_inspections').delete().eq('id', id);
+    const { error } = await this.admin
+      .from('tb_inspections')
+      .delete()
+      .eq('id', id);
     if (error) throw new BadRequestException(error.message);
     return { success: true };
   }
@@ -280,7 +342,9 @@ export class InspectionsService {
     );
 
     if (isBlocked) {
-      throw new BadRequestException('Horario bloqueado para este empreendimento');
+      throw new BadRequestException(
+        'Horario bloqueado para este empreendimento',
+      );
     }
   }
 
@@ -313,6 +377,8 @@ export class InspectionsService {
 
   private timeWithinInterval(time: string, start: string, end: string) {
     const minutes = this.timeToMinutes(time);
-    return minutes >= this.timeToMinutes(start) && minutes < this.timeToMinutes(end);
+    return (
+      minutes >= this.timeToMinutes(start) && minutes < this.timeToMinutes(end)
+    );
   }
 }

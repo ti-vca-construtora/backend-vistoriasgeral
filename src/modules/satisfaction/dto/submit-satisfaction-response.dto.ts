@@ -11,39 +11,39 @@ import {
 
 const RATING_PROPERTY = {
   minimum: 1,
-  maximum: 4,
-  example: 4,
+  maximum: 5,
+  example: 5,
 };
 
 export class SubmitSatisfactionResponseDto {
   @ApiProperty(RATING_PROPERTY)
   @IsInt()
   @Min(1)
-  @Max(4)
+  @Max(5)
   service_rating: number;
 
   @ApiProperty(RATING_PROPERTY)
   @IsInt()
   @Min(1)
-  @Max(4)
+  @Max(5)
   broker_rating: number;
 
   @ApiProperty(RATING_PROPERTY)
   @IsInt()
   @Min(1)
-  @Max(4)
+  @Max(5)
   inspector_rating: number;
 
   @ApiProperty(RATING_PROPERTY)
   @IsInt()
   @Min(1)
-  @Max(4)
+  @Max(5)
   common_areas_rating: number;
 
   @ApiProperty(RATING_PROPERTY)
   @IsInt()
   @Min(1)
-  @Max(4)
+  @Max(5)
   unit_quality_rating: number;
 
   @ApiProperty({ minimum: 0, maximum: 10, example: 10 })

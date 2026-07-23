@@ -25,6 +25,14 @@ class QueryMock {
     return this;
   }
 
+  update() {
+    return this;
+  }
+
+  delete() {
+    return this;
+  }
+
   gte() {
     return this;
   }
@@ -171,5 +179,44 @@ describe('InspectionsService', () => {
       ),
     ).resolves.toMatchObject({ id: 100 });
   });
-});
 
+  it('removes the cancellation rejection when an inspection is accepted', async () => {
+    const { service, admin } = makeService([
+      {
+        data: {
+          id: 77,
+          idclient: 10,
+          status: 'CANCELADA',
+          counts_as_rejection: true,
+        },
+        error: null,
+      },
+      { data: { id: 10, identerprise: 1 }, error: null },
+      { data: null, error: null },
+      { data: [], error: null },
+      {
+        data: {
+          id: 77,
+          idclient: 10,
+          status: 'ACEITE',
+          counts_as_rejection: false,
+        },
+        error: null,
+      },
+    ]);
+
+    await expect(
+      service.update(
+        77,
+        { status: 'ACEITE', counts_as_rejection: false },
+        user,
+      ),
+    ).resolves.toMatchObject({
+      status: 'ACEITE',
+      counts_as_rejection: false,
+    });
+
+    expect(admin.from).toHaveBeenNthCalledWith(3, 'tb_rejections');
+    expect(admin.from).toHaveBeenNthCalledWith(4, 'tb_rejections');
+  });
+});

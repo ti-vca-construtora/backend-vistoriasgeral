@@ -7,6 +7,7 @@ export class InspectionResponseDto {
   @ApiProperty({ nullable: true }) inspector: string | null;
   @ApiProperty() mobuss: boolean;
   @ApiProperty() status: string;
+  @ApiProperty() counts_as_rejection: boolean;
   @ApiProperty({ nullable: true }) idprerejection: number | null;
   @ApiProperty() created_at: string;
   @ApiProperty({ nullable: true }) updated_at: string | null;

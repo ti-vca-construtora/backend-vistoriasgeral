@@ -40,7 +40,7 @@ export class InspectionReminderScheduler
 
     const expression =
       this.config.get<string>('INSPECTION_REMINDER_CRON')?.trim() ||
-      '0 0 9 * * *';
+      '0 0 12 * * *';
     const timeZone = this.timeZone;
     const job = CronJob.from({
       cronTime: expression,
@@ -153,7 +153,13 @@ export class InspectionReminderScheduler
         id,
         datetime,
         status,
-        tb_clients!inner (name, unit, phone)
+          tb_clients!inner (
+            name,
+            unit,
+            phone,
+            identerprise,
+            tb_enterprises (name)
+          )
       `,
       )
       .eq('id', notification.idinspection)
@@ -190,13 +196,27 @@ export class InspectionReminderScheduler
       return;
     }
 
+    const enterprise = this.unwrap(client?.tb_enterprises);
+    const { data: orientation } = await admin
+      .from('tb_enterprise_documents')
+      .select('public_token')
+      .eq('identerprise', client.identerprise)
+      .eq('kind', 'ORIENTATION')
+      .eq('active', true)
+      .maybeSingle();
+    const orientationPath = orientation?.public_token
+      ? `orientacoes/${orientation.public_token}`
+      : 'orientacoes/indisponivel';
+
     try {
       const result = await this.huggyClient.sendInspectionReminder({
         clientName: client?.name ?? 'Cliente',
         unit: client?.unit ?? '',
+        enterpriseName: enterprise?.name ?? '',
         phone: client.phone,
         inspectionDate: context.date,
         inspectionTime: context.time,
+        orientationPath,
       });
       const timestamp = new Date().toISOString();
       await admin

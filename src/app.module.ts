@@ -13,6 +13,7 @@ import { TimelineModule } from './modules/timeline/timeline.module';
 import { BlocksModule } from './modules/blocks/blocks.module';
 import { SatisfactionModule } from './modules/satisfaction/satisfaction.module';
 import { InspectionRemindersModule } from './modules/inspection-reminders/inspection-reminders.module';
+import { DocumentsModule } from './modules/documents/documents.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { InspectionRemindersModule } from './modules/inspection-reminders/inspec
     BlocksModule,
     SatisfactionModule,
     InspectionRemindersModule,
+    DocumentsModule,
   ],
 })
 export class AppModule {}
