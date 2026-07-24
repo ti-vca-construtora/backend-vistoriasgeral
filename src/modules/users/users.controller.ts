@@ -24,7 +24,9 @@ import { UserResponseDto } from './dto/user-response.dto';
 import { SupabaseAuthGuard } from '../../infra/auth/supabase-auth.guard';
 import { RolesGuard } from '../../infra/auth/roles.guard';
 import { Roles } from '../../infra/auth/roles.decorator';
+import type { AuthUser } from '../../infra/auth/auth-user';
 import { UserRole } from '../../infra/auth/auth-user';
+import { CurrentUser } from '../../infra/auth/current-user.decorator';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -33,6 +35,18 @@ import { UserRole } from '../../infra/auth/auth-user';
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
+
+  @Get('me')
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.USER,
+    UserRole.INSPECTOR,
+    UserRole.VIEWER,
+  )
+  @ApiOkResponse({ type: UserResponseDto })
+  async me(@CurrentUser() user: AuthUser) {
+    return this.usersService.findById(user.id);
+  }
 
   @Get()
   @ApiOkResponse({ type: [UserResponseDto] })
