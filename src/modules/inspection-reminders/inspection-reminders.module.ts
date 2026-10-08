@@ -7,5 +7,6 @@ import { InspectionReminderScheduler } from './inspection-reminder.scheduler';
 @Module({
   imports: [ConfigModule, SupabaseModule, SatisfactionModule],
   providers: [InspectionReminderScheduler],
+  exports: [InspectionReminderScheduler],
 })
 export class InspectionRemindersModule {}

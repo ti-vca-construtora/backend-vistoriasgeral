@@ -2,10 +2,12 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { AuthUser, isAdmin } from '../../infra/auth/auth-user';
 import { SupabaseService } from '../../infra/supabase/supabase.service';
+import { InspectionReminderScheduler } from '../inspection-reminders/inspection-reminder.scheduler';
 import { CreateInspectionDto } from './dto/create-inspection.dto';
 import { UpdateInspectionDto } from './dto/update-inspection.dto';
 
@@ -22,7 +24,12 @@ type FindQuery = {
 
 @Injectable()
 export class InspectionsService {
-  constructor(private readonly supabaseService: SupabaseService) {}
+  private readonly logger = new Logger(InspectionsService.name);
+
+  constructor(
+    private readonly supabaseService: SupabaseService,
+    private readonly reminderScheduler: InspectionReminderScheduler,
+  ) {}
 
   private get admin() {
     return this.supabaseService.getAdmin();
@@ -146,6 +153,7 @@ export class InspectionsService {
       .single();
 
     if (error) throw new BadRequestException(error.message);
+    await this.enqueueReminder(data, client.phone);
     return data;
   }
 
@@ -262,6 +270,12 @@ export class InspectionsService {
       .single();
 
     if (error) throw new BadRequestException(error.message);
+    if (
+      data.status === 'AGUARDANDO' &&
+      (dto.datetime !== undefined || dto.status === 'AGUARDANDO')
+    ) {
+      await this.enqueueReminder(data, currentClient.phone);
+    }
     return data;
   }
 
@@ -300,7 +314,7 @@ export class InspectionsService {
   private async findClient(idclient: number) {
     const { data, error } = await this.admin
       .from('tb_clients')
-      .select('id, identerprise')
+      .select('id, identerprise, phone')
       .eq('id', idclient)
       .maybeSingle();
 
@@ -319,6 +333,19 @@ export class InspectionsService {
 
     if (!user.enterpriseIds.includes(Number(identerprise))) {
       throw new ForbiddenException('Usuario sem acesso ao empreendimento');
+    }
+  }
+
+  private async enqueueReminder(
+    inspection: { id: number; datetime: string; status: string },
+    phone: string | null | undefined,
+  ) {
+    try {
+      await this.reminderScheduler.enqueueOnScheduling(inspection, phone);
+    } catch (error) {
+      this.logger.error(
+        `Falha ao enfileirar lembrete da vistoria ${inspection.id}: ${(error as Error).message}`,
+      );
     }
   }
 

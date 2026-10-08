@@ -10,6 +10,7 @@ import { CronJob } from 'cron';
 import { SupabaseService } from '../../infra/supabase/supabase.service';
 import { HuggyClient, HuggyRequestError } from '../satisfaction/huggy.client';
 import {
+  dateKeyInTimeZone,
   formatInspectionDateTime,
   tomorrowWindow,
 } from './inspection-reminder-time';
@@ -122,6 +123,48 @@ export class InspectionReminderScheduler
     return rows.length;
   }
 
+  async enqueueOnScheduling(
+    inspection: { id: number; datetime: string; status: string },
+    phone: string | null | undefined,
+    now = new Date(),
+  ) {
+    if (this.config.get<string>('INSPECTION_REMINDER_ENABLED') !== 'true') {
+      return;
+    }
+
+    const inspectionTime = new Date(inspection.datetime);
+    if (
+      inspection.status !== 'AGUARDANDO' ||
+      !String(phone ?? '').trim() ||
+      !Number.isFinite(inspectionTime.getTime()) ||
+      inspectionTime <= now
+    ) {
+      return;
+    }
+
+    const inspectionDate = dateKeyInTimeZone(inspectionTime, this.timeZone);
+    const today = dateKeyInTimeZone(now, this.timeZone);
+    const tomorrow = tomorrowWindow(now, this.timeZone).dateKey;
+    if (inspectionDate !== today && inspectionDate !== tomorrow) return;
+
+    const { error } = await this.supabaseService.getAdmin()
+      .from('tb_inspection_reminder_notifications')
+      .upsert(
+        {
+          idinspection: inspection.id,
+          inspection_date: inspectionDate,
+          next_attempt_at: now.toISOString(),
+        },
+        {
+          onConflict: 'idinspection,inspection_date',
+          ignoreDuplicates: true,
+        },
+      );
+    if (error) throw new Error(error.message);
+
+    await this.processDue();
+  }
+
   async processDue() {
     if (this.processing) return;
     this.processing = true;
@@ -177,15 +220,18 @@ export class InspectionReminderScheduler
       (inspection as any).datetime,
       this.timeZone,
     );
-    const expected = tomorrowWindow(new Date(), this.timeZone).dateKey;
+    const now = new Date();
+    const today = dateKeyInTimeZone(now, this.timeZone);
+    const tomorrow = tomorrowWindow(now, this.timeZone).dateKey;
     if (
       (inspection as any).status !== 'AGUARDANDO' ||
       context.dateKey !== notification.inspection_date ||
-      context.dateKey !== expected
+      (context.dateKey !== today && context.dateKey !== tomorrow) ||
+      new Date((inspection as any).datetime) <= now
     ) {
       await this.cancel(
         notification.id,
-        'Vistoria nao esta mais agendada para amanha',
+        'Vistoria nao esta mais agendada para hoje ou amanha',
       );
       return;
     }

@@ -63,11 +63,15 @@ const makeService = (results: unknown[]) => {
     from: jest.fn(() => new QueryMock(queue.shift())),
   };
 
-  const service = new InspectionsService({
-    getAdmin: () => admin,
-  } as any);
+  const reminderScheduler = {
+    enqueueOnScheduling: jest.fn().mockResolvedValue(undefined),
+  };
+  const service = new InspectionsService(
+    { getAdmin: () => admin } as any,
+    reminderScheduler as any,
+  );
 
-  return { service, admin };
+  return { service, admin, reminderScheduler };
 };
 
 describe('InspectionsService', () => {
@@ -123,8 +127,8 @@ describe('InspectionsService', () => {
   });
 
   it('schedules directly when there is no block for the enterprise time', async () => {
-    const { service, admin } = makeService([
-      { data: { id: 10, identerprise: 1 }, error: null },
+    const { service, admin, reminderScheduler } = makeService([
+      { data: { id: 10, identerprise: 1, phone: '5577981243447' }, error: null },
       { data: [], error: null },
       { data: { status: 'LIBERADA' }, error: null },
       { data: [], error: null },
@@ -150,6 +154,10 @@ describe('InspectionsService', () => {
     ).resolves.toMatchObject({ id: 99 });
 
     expect(admin.from).not.toHaveBeenCalledWith('tb_inspection_slots');
+    expect(reminderScheduler.enqueueOnScheduling).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 99, status: 'AGUARDANDO' }),
+      '5577981243447',
+    );
   });
 
   it('allows scheduling with a past date when the enterprise time is not blocked', async () => {
